@@ -1198,7 +1198,26 @@ ocrCtx.drawImage(
   ocrCanvas.height
 );
 
+const ocrCanvas = document.createElement('canvas');
+
+ocrCanvas.width = cW * 4;
+ocrCanvas.height = cH * 4;
+
+const ocrCtx = ocrCanvas.getContext('2d');
+
+ocrCtx.filter = 'grayscale(1) contrast(3) brightness(1.3)';
+
+ocrCtx.drawImage(
+  srcCanvas,
+  cx, cy, cW, cH,
+  0, 0,
+  ocrCanvas.width,
+  ocrCanvas.height
+);
+
 const smallB64 = ocrCanvas.toDataURL('image/jpeg', 0.95).split(',')[1];
+
+console.log('[OCR SIZE]', smallB64.length);
 
 console.log('[OCR SIZE]', smallB64.length);
 
