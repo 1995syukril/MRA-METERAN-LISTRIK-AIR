@@ -1180,16 +1180,44 @@ async function analyzePhoto(){
     ppCtx.drawImage(srcCanvas, cx, cy, cW, cH, 0, 0, ppCanvas.width, ppCanvas.height);
     const b64 = ppCanvas.toDataURL('image/jpeg', 0.9).split(',')[1];
 
-    // Kompres gambar ke ukuran kecil agar bisa lewat GET
+    // Kirim gambar full crop tanpa resize berlebihan
     const smallCanvas = document.createElement('canvas');
-    smallCanvas.width = 400; smallCanvas.height = 150;
-    smallCanvas.getContext('2d').drawImage(ppCanvas, 0, 0, 400, 150);
-    const smallB64 = smallCanvas.toDataURL('image/jpeg', 0.7).split(',')[1];
+    smallCanvas.width = cW; smallCanvas.height = cH;
+    const sCtx = smallCanvas.getContext('2d');
+    sCtx.filter = 'contrast(1.5) brightness(1.1)';
+    sCtx.drawImage(srcCanvas, cx, cy, cW, cH, 0, 0, cW, cH);
+    const smallB64 = smallCanvas.toDataURL('image/jpeg', 0.95).split(',')[1];
+    console.log('[OCR] Sending b64 length:', smallB64.length);
 
-    // Kirim ke Apps Script via GET
-    const ocrUrl = CFG.url + '?action=ocr&img=' + encodeURIComponent(smallB64);
-    const res = await fetch(ocrUrl);
-    const data = await res.json();
+    console.log('[OCR] Sending b64 length:', smallB64.length);
+
+    // Gunakan JSONP untuk bypass CORS (Apps Script hanya support GET JSONP)
+    const data = await new Promise((resolve, reject) => {
+      const cbName = 'ocrCb_' + Date.now();
+      const script = document.createElement('script');
+      const timeout = setTimeout(() => {
+        delete window[cbName];
+        script.remove();
+        reject(new Error('Timeout'));
+      }, 30000);
+
+      window[cbName] = function(d) {
+        clearTimeout(timeout);
+        delete window[cbName];
+        script.remove();
+        resolve(d);
+      };
+
+      // Kirim gambar via JSONP GET — base64 di-chunk jika perlu
+      const params = new URLSearchParams({
+        action: 'ocr',
+        img: smallB64,
+        callback: cbName
+      });
+      script.src = CFG.url + '?' + params.toString();
+      script.onerror = () => { clearTimeout(timeout); reject(new Error('Script load error')); };
+      document.head.appendChild(script);
+    });
     console.log('[OCR via Apps Script]', data);
 
     const text = data.text || '';
