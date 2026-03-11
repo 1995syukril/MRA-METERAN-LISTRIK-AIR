@@ -1181,12 +1181,16 @@ async function analyzePhoto(){
     const b64 = ppCanvas.toDataURL('image/jpeg', 0.9).split(',')[1];
 
     // Kirim gambar full crop tanpa resize berlebihan
-    const smallCanvas = document.createElement('canvas');
-    smallCanvas.width = cW; smallCanvas.height = cH;
-    const sCtx = smallCanvas.getContext('2d');
-    sCtx.filter = 'contrast(1.5) brightness(1.1)';
-    sCtx.drawImage(srcCanvas, cx, cy, cW, cH, 0, 0, cW, cH);
-    const smallB64 = ppCanvas.toDataURL('image/jpeg', 0.95).split(',')[1];
+    const ocrCanvas = document.createElement('canvas');
+    ocrCanvas.width = cW * 3;
+    ocrCanvas.height = cH * 3;
+
+    const ocrCtx = ocrCanvas.getContext('2d');
+    ocrCtx.filter = 'grayscale(1) contrast(3) brightness(1.2)';
+
+    ocrCtx.drawImage(srcCanvas, cx, cy, cW, cH, 0, 0, ocrCanvas.width, ocrCanvas.height);
+
+    const smallB64 = ocrCanvas.toDataURL('image/jpeg', 0.95).split(',')[1];
     console.log('[OCR] Sending b64 length:', smallB64.length);
 
     console.log('[OCR] Sending b64 length:', smallB64.length);
