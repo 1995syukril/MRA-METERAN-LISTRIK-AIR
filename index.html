@@ -1648,56 +1648,43 @@ async function post2(sheet, headers, row){
 }
 
 async function getSheet(sheet){
-
-if(!CFG.url) return [];
-
-return new Promise((resolve)=>{
-
-```
-const cb = "jsonp_" + Date.now() + "_" + Math.floor(Math.random()*9999);
-
-window[cb] = function(data){
-
-  delete window[cb];
-
-  script.remove();
-
-  if(data.rows){
-
-    resolve(data.rows);
-
-  }else{
-
-    resolve([]);
-
+  if(!CFG.url) return [];
+  try {
+    const r = await fetch(`${CFG.url}?action=read&sheet=${encodeURIComponent(sheet)}&t=${Date.now()}`);
+    const d = await r.json();
+    if(!d.rows || d.rows.length < 2) return [];
+    const h = d.rows[0];
+    const result = d.rows.slice(1).map(row => {
+      const o={};
+      h.forEach((k,i) => {
+        let v = row[i];
+        // Google Sheets auto-converts "Mar 2026" to Date — convert back
+        if(k === 'Bulan' && v) {
+          const str = String(v);
+          if(str.includes('T') || str.includes('-') || (!isNaN(v) && +v > 40000)) {
+            const d = new Date(str.includes('T') ? str : (typeof v === 'number' ? new Date(1899,11,30+Math.floor(v)) : str));
+            if(!isNaN(d.getTime())) {
+              const BID2=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
+              v = BID2[d.getMonth()] + ' ' + d.getFullYear();
+            }
+          }
+        }
+        // Round numeric values to max 2 decimal places
+        if(typeof v === 'number' && !Number.isInteger(v)) {
+          v = Math.round(v * 100) / 100;
+        }
+        o[k] = v;
+      });
+      return o;
+    });
+    const sample = result.length > 0 ? ('sample Bulan=' + result[0]['Bulan']) : 'empty';
+    console.log('[getSheet] ' + sheet + ' -> ' + result.length + ' rows | ' + sample);
+    return result;
+  } catch(e) {
+    console.error('[getSheet] ERROR:', sheet, e.message);
+    return [];
   }
-
-};
-
-const script = document.createElement("script");
-
-script.src =
-  CFG.url +
-  "?action=read" +
-  "&sheet=" + encodeURIComponent(sheet) +
-  "&callback=" + cb +
-  "&t=" + Date.now();
-
-script.onerror = function(){
-
-  console.error("Script load error");
-
-  resolve([]);
-
-};
-
-document.body.appendChild(script);
-```
-
-});
-
 }
-
 // ── Ambil minimum kWh berdasarkan lantai ──
 function getMinKwh(unitOrLantai){
   // Terima: "Lantai 3", "Lt 5", "3", atau nomor unit seperti "302", "506"
