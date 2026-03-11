@@ -1224,7 +1224,7 @@ async function analyzePhoto(){
     const matches = text.match(/[0-9]+[.,]?[0-9]*/g) || [];
     let best = null, bestLen = 0;
     for(const m of matches){
-      const digits = m.replace(/[.,]/g,'');
+      const digits = text.replace(/[^0-9]/g,'').slice(0,5);
       const n = parseFloat(m.replace(',','.'));
       if(!isNaN(n) && n > 0 && digits.length > bestLen){ best=n; bestLen=digits.length; }
     }
