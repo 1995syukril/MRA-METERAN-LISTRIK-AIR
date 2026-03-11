@@ -1186,7 +1186,7 @@ async function analyzePhoto(){
     const sCtx = smallCanvas.getContext('2d');
     sCtx.filter = 'contrast(1.5) brightness(1.1)';
     sCtx.drawImage(srcCanvas, cx, cy, cW, cH, 0, 0, cW, cH);
-    const smallB64 = smallCanvas.toDataURL('image/jpeg', 0.95).split(',')[1];
+    const smallB64 = ppCanvas.toDataURL('image/jpeg', 0.95).split(',')[1];
     console.log('[OCR] Sending b64 length:', smallB64.length);
 
     console.log('[OCR] Sending b64 length:', smallB64.length);
