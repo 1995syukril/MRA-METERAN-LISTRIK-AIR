@@ -1220,14 +1220,24 @@ async function analyzePhoto(){
     });
     console.log('[OCR via Apps Script]', data);
 
-    const text = data.text || '';
-    const matches = text.match(/[0-9]+[.,]?[0-9]*/g) || [];
-    let best = null, bestLen = 0;
-    for(const m of matches){
-      const digits = text.replace(/[^0-9]/g,'').slice(0,5);
-      const n = parseFloat(m.replace(',','.'));
-      if(!isNaN(n) && n > 0 && digits.length > bestLen){ best=n; bestLen=digits.length; }
-    }
+   const text = (data.text || '').replace(/\s/g,'');
+console.log('[OCR TEXT]', text);
+
+// ambil semua angka dari OCR
+const matches = text.match(/\d+/g) || [];
+
+let best = null;
+let bestLen = 0;
+
+for(const m of matches){
+  const digits = m.replace(/[^0-9]/g,'');
+  if(digits.length > bestLen){
+    bestLen = digits.length;
+    best = parseInt(digits);
+  }
+}
+
+console.log('[OCR DIGITS]', best);
 
     document.getElementById('fotoLoading').style.display='none';
     if(best !== null){
