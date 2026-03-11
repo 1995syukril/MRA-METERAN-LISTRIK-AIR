@@ -1181,19 +1181,26 @@ async function analyzePhoto(){
     const b64 = ppCanvas.toDataURL('image/jpeg', 0.9).split(',')[1];
 
     // Kirim gambar full crop tanpa resize berlebihan
-    const ocrCanvas = document.createElement('canvas');
-    ocrCanvas.width = cW * 3;
-    ocrCanvas.height = cH * 3;
+const ocrCanvas = document.createElement('canvas');
 
-    const ocrCtx = ocrCanvas.getContext('2d');
-    ocrCtx.filter = 'grayscale(1) contrast(3) brightness(1.2)';
+ocrCanvas.width = cW * 4;
+ocrCanvas.height = cH * 4;
 
-    ocrCtx.drawImage(srcCanvas, cx, cy, cW, cH, 0, 0, ocrCanvas.width, ocrCanvas.height);
+const ocrCtx = ocrCanvas.getContext('2d');
 
-    const smallB64 = ocrCanvas.toDataURL('image/jpeg', 0.95).split(',')[1];
-    console.log('[OCR] Sending b64 length:', smallB64.length);
+ocrCtx.filter = 'grayscale(1) contrast(3) brightness(1.3)';
 
-    console.log('[OCR] Sending b64 length:', smallB64.length);
+ocrCtx.drawImage(
+  srcCanvas,
+  cx, cy, cW, cH,
+  0, 0,
+  ocrCanvas.width,
+  ocrCanvas.height
+);
+
+const smallB64 = ocrCanvas.toDataURL('image/jpeg', 0.95).split(',')[1];
+
+console.log('[OCR SIZE]', smallB64.length);
 
     // Gunakan JSONP untuk bypass CORS (Apps Script hanya support GET JSONP)
     const data = await new Promise((resolve, reject) => {
