@@ -1180,15 +1180,18 @@ async function analyzePhoto(){
     ppCtx.drawImage(srcCanvas, cx, cy, cW, cH, 0, 0, ppCanvas.width, ppCanvas.height);
     const b64 = ppCanvas.toDataURL('image/jpeg', 0.9).split(',')[1];
 
-    // Kompres gambar ke ukuran kecil agar bisa lewat GET
+    // Kompres gambar
     const smallCanvas = document.createElement('canvas');
-    smallCanvas.width = 400; smallCanvas.height = 150;
-    smallCanvas.getContext('2d').drawImage(ppCanvas, 0, 0, 400, 150);
-    const smallB64 = smallCanvas.toDataURL('image/jpeg', 0.7).split(',')[1];
+    smallCanvas.width = 600; smallCanvas.height = 200;
+    smallCanvas.getContext('2d').drawImage(ppCanvas, 0, 0, 600, 200);
+    const smallB64 = smallCanvas.toDataURL('image/jpeg', 0.8).split(',')[1];
 
-    // Kirim ke Apps Script via GET
-    const ocrUrl = CFG.url + '?action=ocr&img=' + encodeURIComponent(smallB64);
-    const res = await fetch(ocrUrl);
+    // Kirim ke Apps Script via POST dengan JSON
+    const res = await fetch(CFG.url, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({action: 'ocr', img: smallB64})
+    });
     const data = await res.json();
     console.log('[OCR via Apps Script]', data);
 
