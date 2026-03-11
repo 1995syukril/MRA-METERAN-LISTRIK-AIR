@@ -1176,7 +1176,7 @@ async function analyzePhoto(){
     const ppCanvas = document.createElement('canvas');
     ppCanvas.width = cW*2; ppCanvas.height = cH*2;
     const ppCtx = ppCanvas.getContext('2d');
-    ppCtx.filter = 'contrast(1.8) brightness(1.1)';
+    ppCtx.filter = 'grayscale(1) contrast(2.5) brightness(1.2)';
     ppCtx.drawImage(srcCanvas, cx, cy, cW, cH, 0, 0, ppCanvas.width, ppCanvas.height);
     const b64 = ppCanvas.toDataURL('image/jpeg', 0.9).split(',')[1];
 
@@ -1220,8 +1220,11 @@ async function analyzePhoto(){
     });
     console.log('[OCR via Apps Script]', data);
 
-   const text = (data.text || '').replace(/\s/g,'');
+  const text = (data.text || '').replace(/\s/g,'');
 console.log('[OCR TEXT]', text);
+
+const digits = text.replace(/[^0-9]/g,'').slice(0,6);
+console.log('[OCR DIGITS]', digits);
 
 // ambil semua angka dari OCR
 const matches = text.match(/\d+/g) || [];
