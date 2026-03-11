@@ -1180,11 +1180,14 @@ async function analyzePhoto(){
     ppCtx.drawImage(srcCanvas, cx, cy, cW, cH, 0, 0, ppCanvas.width, ppCanvas.height);
     const b64 = ppCanvas.toDataURL('image/jpeg', 0.9).split(',')[1];
 
-    // Kompres gambar
+    // Kirim gambar full crop tanpa resize berlebihan
     const smallCanvas = document.createElement('canvas');
-    smallCanvas.width = 600; smallCanvas.height = 200;
-    smallCanvas.getContext('2d').drawImage(ppCanvas, 0, 0, 600, 200);
-    const smallB64 = smallCanvas.toDataURL('image/jpeg', 0.8).split(',')[1];
+    smallCanvas.width = cW; smallCanvas.height = cH;
+    const sCtx = smallCanvas.getContext('2d');
+    sCtx.filter = 'contrast(1.5) brightness(1.1)';
+    sCtx.drawImage(srcCanvas, cx, cy, cW, cH, 0, 0, cW, cH);
+    const smallB64 = smallCanvas.toDataURL('image/jpeg', 0.95).split(',')[1];
+    console.log('[OCR] Sending b64 length:', smallB64.length);
 
     // Kirim ke Apps Script via POST dengan JSON
     const res = await fetch(CFG.url, {
