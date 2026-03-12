@@ -197,6 +197,19 @@ tr:hover td{background:rgba(255,255,255,.015);}
 }
 
 /* ═══════════════ MOBILE RESPONSIVE ═══════════════ */
+/* Floor filter buttons */
+.floor-btn{
+  padding:5px 14px;border-radius:20px;border:1px solid var(--border);
+  background:var(--card);color:var(--muted2);font-size:.72rem;cursor:pointer;
+  transition:all .2s;font-family:inherit;
+}
+.floor-btn:hover{border-color:var(--accent);color:var(--accent);}
+.floor-btn.active{background:var(--accent);color:#000;border-color:var(--accent);font-weight:700;}
+/* Alert top panel */
+.alert-top-warn{background:rgba(255,200,0,.12);border:1px solid #ffc800;border-radius:8px;padding:10px 14px;margin-bottom:6px;}
+.alert-top-crit{background:rgba(255,60,60,.12);border:1px solid #ff3c3c;border-radius:8px;padding:10px 14px;margin-bottom:6px;}
+.alert-top-title{font-weight:700;font-size:.8rem;margin-bottom:4px;}
+.alert-top-item{font-size:.75rem;color:var(--muted2);margin-left:8px;}
 @media (max-width: 768px) {
   /* Header */
   .hd { padding: 10px 12px 0; }
@@ -409,6 +422,30 @@ function doPost(e) {
     <div class="cc"><div class="ct">Pemakaian Listrik per Unit</div><div class="cs">kWh — merah = anomali atau melebihi target</div><div class="cw2" style="height:220px"><canvas id="cElecBar"></canvas></div></div>
     <div class="cc"><div class="ct">Pemakaian Air per Unit</div><div class="cs">m³ — merah = anomali atau melebihi target</div><div class="cw2" style="height:220px"><canvas id="cWaterBar"></canvas></div></div>
   </div>
+  <!-- Alert Panel akan muncul di sini via JS -->
+  <div id="alertPanelTop" style="display:none;margin:0 0 12px;"></div>
+
+  <!-- Grafik Harian -->
+  <div class="g2" style="margin-bottom:12px;">
+    <div class="cc">
+      <div class="ct">📅 Pemakaian Harian — Listrik</div>
+      <div class="cs">kWh per hari bulan ini (estimasi dari data input)</div>
+      <div class="cw2" style="height:200px"><canvas id="cDailyE"></canvas></div>
+    </div>
+    <div class="cc">
+      <div class="ct">📅 Pemakaian Harian — Air</div>
+      <div class="cs">m³ per hari bulan ini (estimasi dari data input)</div>
+      <div class="cw2" style="height:200px"><canvas id="cDailyW"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Grafik Tren Bulanan -->
+  <div class="cc" style="margin-bottom:12px;">
+    <div class="ct">📈 Tren Pemakaian Bulanan</div>
+    <div class="cs">Total kWh listrik &amp; m³ air per bulan — pantau tren jangka panjang</div>
+    <div class="cw2" style="height:220px"><canvas id="cTrendOverview"></canvas></div>
+  </div>
+
   <div class="g3">
     <div class="cc"><div class="ct">Common Area — Rincian Pemakaian</div><div class="cs">Listrik (kWh) &amp; Air (m³) per area</div><div id="caBars" style="margin-top:8px;"></div></div>
     <div class="cc"><div class="ct">Proporsi Listrik</div><div class="cs">Tenant vs Common Area</div><div class="cw2" style="height:185px"><canvas id="cPie"></canvas></div></div>
@@ -485,7 +522,16 @@ function doPost(e) {
   <div class="tc">
     <div class="th2">
       <div><div class="tt">Data Pemakaian Per Unit</div><div class="ts">Merah = anomali | Kuning = mendekati target | Klik header untuk sort</div></div>
-      <input class="si" type="text" placeholder="🔍 Cari unit / lantai..." oninput="filterUnit(this.value)">
+      <input class="si" type="text" id="unitSearchInput" placeholder="🔍 Cari unit / lantai..." oninput="filterUnit(this.value)">
+    </div>
+    <div id="floorFilterBtns" style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 4px;">
+      <button class="floor-btn active" onclick="setFloorFilter('semua',this)">🏢 Semua</button>
+      <button class="floor-btn" onclick="setFloorFilter('2',this)">Lantai 2</button>
+      <button class="floor-btn" onclick="setFloorFilter('3',this)">Lantai 3</button>
+      <button class="floor-btn" onclick="setFloorFilter('4',this)">Lantai 4</button>
+      <button class="floor-btn" onclick="setFloorFilter('5',this)">Lantai 5</button>
+      <button class="floor-btn" onclick="setFloorFilter('6',this)">Lantai 6</button>
+      <button class="floor-btn" onclick="setFloorFilter('7',this)">Lantai 7</button>
     </div>
     <table><thead><tr>
       <th onclick="su(0)">Unit ↕</th><th onclick="su(1)">Lantai ↕</th><th onclick="su(2)">Tipe ↕</th>
@@ -1972,6 +2018,13 @@ setText('k-ecost',(totEKpi/1e6).toFixed(1));
 
   // Anomaly alert
   renderAnomalyAlert(anoms,eArr,wArr,avgE,avgW);
+  renderAlertTop(anoms,eArr,wArr,avgE,avgW);
+
+  // Daily chart (estimasi: bagi pemakaian bulanan / hari dalam bulan)
+  renderDailyCharts(ten, eArr, wArr);
+
+  // Trend overview chart
+  renderTrendOverview();
 
   // Charts
   updBarChart(charts.elecBar, lbls, eArr, avgE, CFG.tgtE, 'e');
@@ -2014,6 +2067,121 @@ function renderAnomalyAlert(anoms,eArr,wArr,avgE,avgW){
     return `<div class="a-item">⚠️ <b>Unit ${r['Unit']}</b> (${r['Lantai']||''}) — ${msgs.join(' | ')}</div>`;
   }).join('');
 }
+
+// ─── ALERT TOP PANEL (lonjakan) ───
+function renderAlertTop(anoms, eArr, wArr, avgE, avgW){
+  const panel = document.getElementById('alertPanelTop');
+  if(!panel) return;
+  if(!anoms.length){ panel.style.display='none'; return; }
+
+  const crits = [], warns = [];
+  anoms.forEach((r,idx2)=>{
+    const e = eArr[idx2]||0, w = wArr[idx2]||0;
+    const eRatio = avgE ? e/avgE : 0, wRatio = avgW ? w/avgW : 0;
+    const maxRatio = Math.max(eRatio, wRatio);
+    const unit = 'Unit '+r['Unit'];
+    if(maxRatio >= 4) crits.push({unit, e, w, eRatio, wRatio});
+    else if(maxRatio >= 2.5) warns.push({unit, e, w, eRatio, wRatio});
+  });
+
+  let html = '';
+  if(crits.length){
+    html += `<div class="alert-top-crit">
+      <div class="alert-top-title">🚨 KRITIS — Lonjakan Ekstrem (≥4× rata-rata)</div>
+      ${crits.map(a=>`<div class="alert-top-item">• ${a.unit}: Listrik ${a.e} kWh (${a.eRatio.toFixed(1)}×) | Air ${a.w} m³ (${a.wRatio.toFixed(1)}×)</div>`).join('')}
+    </div>`;
+  }
+  if(warns.length){
+    html += `<div class="alert-top-warn">
+      <div class="alert-top-title">⚠️ WASPADA — Pemakaian Tinggi (≥2.5× rata-rata)</div>
+      ${warns.map(a=>`<div class="alert-top-item">• ${a.unit}: Listrik ${a.e} kWh (${a.eRatio.toFixed(1)}×) | Air ${a.w} m³ (${a.wRatio.toFixed(1)}×)</div>`).join('')}
+    </div>`;
+  }
+  panel.innerHTML = html;
+  panel.style.display = (crits.length||warns.length) ? 'block' : 'none';
+}
+
+// ─── GRAFIK HARIAN ───
+function renderDailyCharts(ten, eArr, wArr){
+  // Estimasi pemakaian harian: rata-rata per unit dibagi hari dalam bulan
+  const now = new Date();
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
+  const today = now.getDate();
+
+  // Buat array 31 hari
+  const days = Array.from({length:today}, (_,i)=>i+1);
+  // Distribusi sederhana: pemakaian per unit dibagi rata per hari
+  // Gunakan total per unit dan bagi per hari untuk estimasi
+  const totalE = eArr.reduce((s,v)=>s+v,0);
+  const totalW = wArr.reduce((s,v)=>s+v,0);
+  const dailyE = days.map(d => +(totalE/daysInMonth).toFixed(1));
+  const dailyW = days.map(d => +(totalW/daysInMonth).toFixed(2));
+
+  const mkChart = (id, label, data, color, unit) => {
+    const ctx = document.getElementById(id);
+    if(!ctx) return;
+    if(charts[id]){ charts[id].data.labels=days; charts[id].data.datasets[0].data=data; charts[id].update(); return; }
+    charts[id] = new Chart(ctx, {
+      type:'bar',
+      data:{ labels:days, datasets:[{
+        label: label,
+        data: data,
+        backgroundColor: color+'99',
+        borderColor: color,
+        borderWidth:1,
+        borderRadius:3
+      }]},
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        plugins:{legend:{display:false}},
+        scales:{
+          x:{ticks:{font:{size:9}}, grid:{display:false}},
+          y:{ticks:{font:{size:9}}, grid:{color:'rgba(255,255,255,.05)'}}
+        }
+      }
+    });
+  };
+  mkChart('cDailyE','kWh/hari', dailyE, '#f5c542', 'kWh');
+  mkChart('cDailyW','m³/hari',  dailyW, '#38bdf8', 'm³');
+}
+
+// ─── GRAFIK TREN OVERVIEW ───
+function renderTrendOverview(){
+  const ctx = document.getElementById('cTrendOverview');
+  if(!ctx) return;
+  const months = Object.keys(trenData).sort();
+  if(months.length < 2){ if(charts.trendOv){ charts.trendOv.data.labels=[]; charts.trendOv.update(); } return; }
+  const eData = months.map(m=>trenData[m].e||0);
+  const wData = months.map(m=>trenData[m].w||0);
+  const lbls  = months.map(m=>{ const p=m.split(' '); return (p[0]||m).substring(0,3)+' '+(p[1]||'').slice(-2); });
+
+  if(charts.trendOv){
+    charts.trendOv.data.labels = lbls;
+    charts.trendOv.data.datasets[0].data = eData;
+    charts.trendOv.data.datasets[1].data = wData;
+    charts.trendOv.update();
+    return;
+  }
+  charts.trendOv = new Chart(ctx, {
+    type:'line',
+    data:{ labels:lbls, datasets:[
+      { label:'Listrik (kWh)', data:eData, borderColor:'#f5c542', backgroundColor:'rgba(245,197,66,.15)',
+        tension:.4, fill:true, pointRadius:4, yAxisID:'yE' },
+      { label:'Air (m³)', data:wData, borderColor:'#38bdf8', backgroundColor:'rgba(56,189,248,.15)',
+        tension:.4, fill:true, pointRadius:4, yAxisID:'yW' }
+    ]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ labels:{boxWidth:10,font:{size:10},color:'#aaa'} } },
+      scales:{
+        yE:{ type:'linear', position:'left',  ticks:{font:{size:9},color:'#f5c542'}, grid:{color:'rgba(255,255,255,.05)'} },
+        yW:{ type:'linear', position:'right', ticks:{font:{size:9},color:'#38bdf8'}, grid:{display:false} },
+        x:{ ticks:{font:{size:9}}, grid:{display:false} }
+      }
+    }
+  });
+}
+
 
 // ═══════════════════════════════════════════════════
 // FLOOR DATA
@@ -2288,7 +2456,32 @@ function renderUnitTable(data,eArr,wArr,avgE,avgW){
   }).join('');
 }
 
-function filterUnit(q){ document.querySelectorAll('#unitBody tr').forEach(tr=>tr.style.display=tr.textContent.toLowerCase().includes(q.toLowerCase())?'':'none'); }
+let activeFloorFilter = 'semua';
+
+function setFloorFilter(floor, btn){
+  activeFloorFilter = floor;
+  document.querySelectorAll('.floor-btn').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  applyUnitFilter();
+}
+
+function filterUnit(q){
+  document.getElementById('unitSearchInput').value = q;
+  applyUnitFilter();
+}
+
+function applyUnitFilter(){
+  const q = (document.getElementById('unitSearchInput')?.value||'').toLowerCase();
+  document.querySelectorAll('#unitBody tr').forEach(tr=>{
+    const text = tr.textContent.toLowerCase();
+    const matchQ = !q || text.includes(q);
+    // Get lantai from 2nd cell
+    const cells = tr.querySelectorAll('td');
+    const lantai = cells[1]?.textContent?.trim() || '';
+    const matchF = activeFloorFilter==='semua' || lantai===activeFloorFilter;
+    tr.style.display = (matchQ && matchF) ? '' : 'none';
+  });
+}
 function su(col){
   sortDir[col]=!sortDir[col];
   const rows=[...document.querySelectorAll('#unitBody tr')];
