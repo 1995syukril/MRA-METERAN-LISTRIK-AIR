@@ -1168,19 +1168,35 @@ async function analyzePhoto(){
   const isAir = fotoTargetField && fotoTargetField.startsWith('w');
 
   try{
-    // Crop area kotak kuning
-    const srcCanvas = document.getElementById('fotoCanvas');
-    const cw = srcCanvas.width, ch = srcCanvas.height;
-    const cx = Math.round(cw*0.125), cy = Math.round(ch*0.325);
-    const cW = Math.round(cw*0.75),  cH = Math.round(ch*0.35);
-
-    // POST tidak ada limit URL — kirim gambar lebih besar
-    const tiny = document.createElement('canvas');
-    tiny.width = 800; tiny.height = 260;
-    const tCtx = tiny.getContext('2d');
-    tCtx.filter = 'grayscale(1) contrast(2) brightness(1.1)';
-    tCtx.drawImage(srcCanvas, cx, cy, cW, cH, 0, 0, 800, 260);
-    const b64 = tiny.toDataURL('image/jpeg', 0.92).split(',')[1];
+    // Jika foto dari galeri (fotoB64 sudah ada), pakai langsung
+    let b64;
+    if(fotoB64){
+      // Gambar dari galeri — crop via Image element
+      const img = new Image();
+      await new Promise(res=>{ img.onload=res; img.src='data:image/jpeg;base64,'+fotoB64; });
+      const iw = img.naturalWidth, ih = img.naturalHeight;
+      const tiny = document.createElement('canvas');
+      tiny.width = 800; tiny.height = 260;
+      const tCtx = tiny.getContext('2d');
+      tCtx.filter = 'grayscale(1) contrast(2) brightness(1.1)';
+      // Crop tengah (area angka meteran)
+      const sx = Math.round(iw*0.05), sy = Math.round(ih*0.25);
+      const sw = Math.round(iw*0.9),  sh = Math.round(ih*0.45);
+      tCtx.drawImage(img, sx, sy, sw, sh, 0, 0, 800, 260);
+      b64 = tiny.toDataURL('image/jpeg', 0.92).split(',')[1];
+    } else {
+      // Foto dari kamera — crop canvas
+      const srcCanvas = document.getElementById('fotoCanvas');
+      const cw = srcCanvas.width, ch = srcCanvas.height;
+      const cx = Math.round(cw*0.125), cy = Math.round(ch*0.325);
+      const cW = Math.round(cw*0.75),  cH = Math.round(ch*0.35);
+      const tiny = document.createElement('canvas');
+      tiny.width = 800; tiny.height = 260;
+      const tCtx = tiny.getContext('2d');
+      tCtx.filter = 'grayscale(1) contrast(2) brightness(1.1)';
+      tCtx.drawImage(srcCanvas, cx, cy, cW, cH, 0, 0, 800, 260);
+      b64 = tiny.toDataURL('image/jpeg', 0.92).split(',')[1];
+    }
     console.log('[OCR] b64 length:', b64.length);
 
     // Kirim via fetch POST form-urlencoded — Apps Script baca dari e.parameter
