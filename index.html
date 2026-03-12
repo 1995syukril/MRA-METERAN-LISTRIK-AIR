@@ -1222,17 +1222,37 @@ async function analyzePhoto(){
 
     console.log('[OCR result]', data);
     const text = data.text || '';
-    const matches = text.match(/[0-9]+[.,]?[0-9]*/g) || [];
-    let best = null, bestLen = 0;
-    for(const m of matches){
-      const digits = m.replace(/[.,]/g,'');
-      const n = parseFloat(m.replace(',','.'));
-      if(!isNaN(n) && n > 0 && digits.length > bestLen){ best=n; bestLen=digits.length; }
+    console.log('[OCR raw text]', text);
+
+    // Strategi 1: cari angka 4-6 digit berurutan (angka meteran)
+    // Gabungkan baris yang hanya berisi 1-2 digit jadi satu angka
+    const lines = text.split(/[\n\r]+/).map(l=>l.trim()).filter(l=>l);
+    let meterStr = '';
+    for(const line of lines){
+      // Kalau baris hanya berisi 1-2 digit, gabungkan
+      if(/^[0-9]{1,2}$/.test(line)) meterStr += line;
+      else if(/^[0-9]{3,6}$/.test(line)){ meterStr += line; break; }
+      else if(meterStr.length >= 4) break;
+      else meterStr = ''; // reset kalau ada teks lain
     }
+
+    // Strategi 2: cari semua angka, ambil yang 4+ digit
+    const allNums = text.match(/[0-9]+/g) || [];
+    const longNums = allNums.filter(n=>n.length>=4).map(n=>parseInt(n));
+
+    let best = null;
+    if(meterStr.length >= 4){
+      best = parseInt(meterStr);
+    } else if(longNums.length > 0){
+      // Ambil angka 4-6 digit terbesar yang masuk akal untuk meteran
+      const candidates = longNums.filter(n=>n>=1000 && n<=999999);
+      if(candidates.length > 0) best = Math.max(...candidates);
+    }
+    console.log('[OCR] meterStr:', meterStr, '| longNums:', longNums, '| best:', best);
 
     document.getElementById('fotoLoading').style.display='none';
     if(best !== null){
-      document.getElementById('fotoAngka').textContent = best.toLocaleString('id-ID',{minimumFractionDigits:0,maximumFractionDigits:2});
+      document.getElementById('fotoAngkaInput').value = best;
       document.getElementById('fotoSatuan').textContent = isAir ? 'm³' : 'kWh';
       document.getElementById('fotoResult').style.display='block';
       document.getElementById('fotoRetakeBtn').style.display='block';
@@ -1274,9 +1294,7 @@ window.retakePhoto = function(){
 };
 
 window.useResult = function(){
-  const angka = parseFloat(
-    document.getElementById('fotoAngka').textContent.replace(/\./g,'').replace(',','.')
-  );
+  const angka = parseFloat(document.getElementById('fotoAngkaInput').value);
   if(!isNaN(angka) && fotoTargetField){
     document.getElementById('i-'+fotoTargetField).value = angka;
     toast('✅ Angka '+ angka +' dimasukkan ke form','ok');
@@ -2770,9 +2788,9 @@ function initTagihanCharts(){
 
     <!-- Result -->
     <div id="fotoResult" style="display:none;background:rgba(0,229,160,.08);border:1px solid rgba(0,229,160,.3);border-radius:8px;padding:12px;margin-bottom:12px;text-align:center;">
-      <div style="font-size:.72rem;color:var(--muted2);margin-bottom:4px;">Angka terbaca:</div>
-      <div id="fotoAngka" style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--green);letter-spacing:.1em;">—</div>
-      <div id="fotoSatuan" style="font-size:.7rem;color:var(--muted2);"></div>
+      <div style="font-size:.72rem;color:var(--muted2);margin-bottom:6px;">Angka terbaca — edit jika perlu:</div>
+      <input id="fotoAngkaInput" type="number" step="0.1" style="font-family:'Bebas Neue',sans-serif;font-size:1.6rem;color:var(--green);background:transparent;border:none;border-bottom:2px solid var(--green);text-align:center;width:100%;letter-spacing:.08em;outline:none;" placeholder="—">
+      <div id="fotoSatuan" style="font-size:.7rem;color:var(--muted2);margin-top:4px;"></div>
     </div>
 
     <div id="fotoError" style="display:none;background:rgba(255,69,96,.08);border:1px solid rgba(255,69,96,.3);border-radius:8px;padding:10px;margin-bottom:12px;font-size:.75rem;color:var(--red);text-align:center;"></div>
