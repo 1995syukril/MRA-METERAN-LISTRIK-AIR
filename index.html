@@ -526,12 +526,12 @@ function doPost(e) {
     </div>
     <div id="floorFilterBtns" style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 4px;">
       <button class="floor-btn active" onclick="setFloorFilter('semua',this)">🏢 Semua</button>
-      <button class="floor-btn" onclick="setFloorFilter('2',this)">Lantai 2</button>
-      <button class="floor-btn" onclick="setFloorFilter('3',this)">Lantai 3</button>
-      <button class="floor-btn" onclick="setFloorFilter('4',this)">Lantai 4</button>
-      <button class="floor-btn" onclick="setFloorFilter('5',this)">Lantai 5</button>
-      <button class="floor-btn" onclick="setFloorFilter('6',this)">Lantai 6</button>
-      <button class="floor-btn" onclick="setFloorFilter('7',this)">Lantai 7</button>
+      <button class="floor-btn" onclick="setFloorFilter('Lantai 2',this)">Lantai 2</button>
+      <button class="floor-btn" onclick="setFloorFilter('Lantai 3',this)">Lantai 3</button>
+      <button class="floor-btn" onclick="setFloorFilter('Lantai 4',this)">Lantai 4</button>
+      <button class="floor-btn" onclick="setFloorFilter('Lantai 5',this)">Lantai 5</button>
+      <button class="floor-btn" onclick="setFloorFilter('Lantai 6',this)">Lantai 6</button>
+      <button class="floor-btn" onclick="setFloorFilter('Lantai 7',this)">Lantai 7</button>
     </div>
     <table><thead><tr>
       <th onclick="su(0)">Unit ↕</th><th onclick="su(1)">Lantai ↕</th><th onclick="su(2)">Tipe ↕</th>
@@ -2478,7 +2478,13 @@ function applyUnitFilter(){
     // Get lantai from 2nd cell
     const cells = tr.querySelectorAll('td');
     const lantai = cells[1]?.textContent?.trim() || '';
-    const matchF = activeFloorFilter==='semua' || lantai===activeFloorFilter;
+    // Support format: 'Lantai 2', '2', atau deteksi dari nomor unit (502=lantai 5)
+    const unitNum = (cells[0]?.textContent||'').replace('Unit','').trim();
+    const lantaiFromUnit = unitNum.length>=3 ? 'Lantai '+unitNum[0] : '';
+    const matchF = activeFloorFilter==='semua'
+      || lantai===activeFloorFilter
+      || ('Lantai '+lantai)===activeFloorFilter
+      || lantaiFromUnit===activeFloorFilter;
     tr.style.display = (matchQ && matchF) ? '' : 'none';
   });
 }
