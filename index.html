@@ -1168,58 +1168,33 @@ async function analyzePhoto(){
   const isAir = fotoTargetField && fotoTargetField.startsWith('w');
 
   try{
-    // Crop + preprocess
+    // Crop area kotak kuning
     const srcCanvas = document.getElementById('fotoCanvas');
     const cw = srcCanvas.width, ch = srcCanvas.height;
     const cx = Math.round(cw*0.125), cy = Math.round(ch*0.325);
     const cW = Math.round(cw*0.75),  cH = Math.round(ch*0.35);
-    const ppCanvas = document.createElement('canvas');
-    ppCanvas.width = cW*2; ppCanvas.height = cH*2;
-    const ppCtx = ppCanvas.getContext('2d');
-    ppCtx.filter = 'contrast(1.8) brightness(1.1)';
-    ppCtx.drawImage(srcCanvas, cx, cy, cW, cH, 0, 0, ppCanvas.width, ppCanvas.height);
-    const b64 = ppCanvas.toDataURL('image/jpeg', 0.9).split(',')[1];
 
-    // Kirim gambar full crop tanpa resize berlebihan
-    const smallCanvas = document.createElement('canvas');
-    smallCanvas.width = cW; smallCanvas.height = cH;
-    const sCtx = smallCanvas.getContext('2d');
-    sCtx.filter = 'contrast(1.5) brightness(1.1)';
-    sCtx.drawImage(srcCanvas, cx, cy, cW, cH, 0, 0, cW, cH);
-    const smallB64 = smallCanvas.toDataURL('image/jpeg', 0.95).split(',')[1];
-    console.log('[OCR] Sending b64 length:', smallB64.length);
+    // Resize ke 300x100 — cukup untuk OCR angka, cukup kecil untuk URL
+    const tiny = document.createElement('canvas');
+    tiny.width = 300; tiny.height = 100;
+    const tCtx = tiny.getContext('2d');
+    tCtx.filter = 'grayscale(1) contrast(2) brightness(1.2)';
+    tCtx.drawImage(srcCanvas, cx, cy, cW, cH, 0, 0, 300, 100);
+    const b64 = tiny.toDataURL('image/png', 1.0).split(',')[1];
+    console.log('[OCR] b64 length:', b64.length);
 
-    console.log('[OCR] Sending b64 length:', smallB64.length);
-
-    // Gunakan JSONP untuk bypass CORS (Apps Script hanya support GET JSONP)
+    // JSONP ke Apps Script
     const data = await new Promise((resolve, reject) => {
       const cbName = 'ocrCb_' + Date.now();
       const script = document.createElement('script');
-      const timeout = setTimeout(() => {
-        delete window[cbName];
-        script.remove();
-        reject(new Error('Timeout'));
-      }, 30000);
-
-      window[cbName] = function(d) {
-        clearTimeout(timeout);
-        delete window[cbName];
-        script.remove();
-        resolve(d);
-      };
-
-      // Kirim gambar via JSONP GET — base64 di-chunk jika perlu
-      const params = new URLSearchParams({
-        action: 'ocr',
-        img: smallB64,
-        callback: cbName
-      });
-      script.src = CFG.url + '?' + params.toString();
-      script.onerror = () => { clearTimeout(timeout); reject(new Error('Script load error')); };
+      const timer = setTimeout(()=>{ delete window[cbName]; script.remove(); reject(new Error('Timeout 30s')); }, 30000);
+      window[cbName] = d => { clearTimeout(timer); delete window[cbName]; script.remove(); resolve(d); };
+      script.onerror = ()=>{ clearTimeout(timer); delete window[cbName]; reject(new Error('Script error')); };
+      script.src = CFG.url + '?action=ocr&callback=' + cbName + '&img=' + encodeURIComponent(b64);
       document.head.appendChild(script);
     });
-    console.log('[OCR via Apps Script]', data);
 
+    console.log('[OCR result]', data);
     const text = data.text || '';
     const matches = text.match(/[0-9]+[.,]?[0-9]*/g) || [];
     let best = null, bestLen = 0;
@@ -1238,7 +1213,7 @@ async function analyzePhoto(){
       document.getElementById('fotoUseBtn').style.display='block';
     } else {
       document.getElementById('fotoError').style.display='block';
-      document.getElementById('fotoError').innerHTML='Angka tidak terbaca.<br><small>Tips: pencahayaan cukup, foto tegak lurus, angka memenuhi kotak kuning.</small>';
+      document.getElementById('fotoError').innerHTML='Angka tidak terbaca.<br><small>Raw OCR: '+text+'</small>';
       document.getElementById('fotoRetakeBtn').style.display='block';
     }
   } catch(e){
