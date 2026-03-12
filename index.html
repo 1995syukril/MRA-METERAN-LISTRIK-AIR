@@ -1,0 +1,3367 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Dashboard Monitoring Energy — Menteng Regency</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300&display=swap');
+:root{
+  --bg:#05080f;--surface:#090e1a;--card:#0d1220;--border:#172035;--border2:#1f2f48;
+  --elec:#ffb800;--elec2:#ffd060;--water:#00d4ff;--water2:#60e8ff;
+  --green:#00e5a0;--red:#ff4560;--purple:#c084fc;--orange:#ff6b35;
+  --text:#e8edf5;--muted:#4a5a72;--muted2:#7a8fa8;--r:10px;
+  --glow-e:rgba(255,184,0,.18);--glow-w:rgba(0,212,255,.18);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+body::before{content:'';position:fixed;inset:0;
+  background-image:
+    linear-gradient(rgba(0,212,255,.025) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(0,212,255,.025) 1px,transparent 1px),
+    radial-gradient(ellipse 80% 50% at 20% 10%,rgba(255,184,0,.06),transparent),
+    radial-gradient(ellipse 60% 40% at 80% 80%,rgba(0,212,255,.06),transparent);
+  background-size:40px 40px,40px 40px,100% 100%,100% 100%;
+  pointer-events:none;z-index:0;}
+.wrap{position:relative;z-index:1;max-width:1440px;margin:0 auto;padding:20px 16px 80px;}
+
+/* SETUP */
+#setupBanner{background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.35);border-radius:var(--r);padding:18px 20px;margin-bottom:18px;}
+#setupBanner h3{font-family:'Bebas Neue',sans-serif;letter-spacing:.05em;font-size:.93rem;color:var(--elec);margin-bottom:7px;}
+#setupBanner p{font-size:.79rem;color:#d4b978;margin-bottom:11px;line-height:1.6;}
+.url-row{display:flex;gap:8px;flex-wrap:wrap;}
+#scriptUrl{flex:1;min-width:240px;background:var(--surface);border:1px solid var(--border2);color:var(--text);padding:8px 13px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.83rem;}
+#scriptUrl:focus{outline:none;border-color:var(--elec);}
+pre.cb{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:11px;font-size:.71rem;color:#a3e0ff;overflow-x:auto;margin-top:8px;white-space:pre;}
+
+/* ALERT PANEL */
+#alertPanel{display:none;background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.28);border-radius:var(--r);padding:13px 17px;margin-bottom:15px;animation:fu .3s ease;}
+#alertPanel h4{color:var(--red);font-size:.83rem;font-weight:700;margin-bottom:7px;display:flex;align-items:center;gap:8px;}
+.a-item{font-size:.78rem;color:#fca5a5;padding:3px 0;border-bottom:1px solid rgba(239,68,68,.12);}
+.a-item:last-child{border-bottom:none;}
+
+/* HEADER */
+header{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:11px;margin-bottom:18px;}
+.hl h1{font-family:'Bebas Neue',sans-serif;letter-spacing:.05em;font-size:clamp(1.25rem,3vw,1.85rem);font-weight:800;letter-spacing:-.03em;line-height:1.15;}
+.hl h1 .ec{color:var(--elec);}.hl h1 .wc{color:var(--water);}
+.hl p{color:var(--muted2);font-size:.78rem;margin-top:4px;font-weight:300;}
+.hr2{display:flex;gap:7px;flex-wrap:wrap;align-items:center;}
+.ms{background:var(--card);border:1px solid var(--border2);color:var(--text);padding:7px 11px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.81rem;cursor:pointer;}
+.conn-pill{display:inline-flex;align-items:center;gap:6px;background:rgba(0,229,160,.08);border:1px solid rgba(0,229,160,.3);border-radius:4px;padding:4px 10px;font-family:'Space Mono',monospace;font-size:.65rem;color:var(--green);letter-spacing:.06em;text-transform:uppercase;}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:pulse 1.5s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+
+/* BUTTONS */
+.btn{padding:6px 14px;border-radius:4px;border:none;font-family:'Space Mono',monospace;font-size:.72rem;font-weight:700;cursor:pointer;transition:all .15s;letter-spacing:.03em;text-transform:uppercase;}
+.be{background:var(--elec);color:#000;}.be:hover{background:var(--elec2);}
+.bw{background:var(--water);color:#000;}.bw:hover{background:var(--water2);}
+.bg2{background:var(--green);color:#000;}.bg2:hover{filter:brightness(1.1);}
+.bp{background:var(--purple);color:#fff;}.bp:hover{filter:brightness(1.1);}
+.bo{background:transparent;color:var(--muted2);border:1px solid var(--border2);}.bo:hover{border-color:var(--water);color:var(--water);}
+.bsm{padding:5px 11px;font-size:.75rem;}
+
+/* TABS */
+.tabs{display:flex;gap:5px;margin-bottom:17px;flex-wrap:wrap;}
+.tab{padding:6px 15px;border-radius:999px;border:1px solid var(--border);background:var(--surface);color:var(--muted);font-family:'DM Sans',sans-serif;font-size:.78rem;font-weight:600;cursor:pointer;transition:all .15s;}
+.tab:hover{border-color:var(--water);color:var(--water);}
+.tab.ae{background:rgba(245,158,11,.1);border-color:var(--elec);color:var(--elec);}
+.tab.aw{background:rgba(6,182,212,.1);border-color:var(--water);color:var(--water);}
+.tab.ag{background:rgba(16,185,129,.1);border-color:var(--green);color:var(--green);}
+.tab.ap{background:rgba(168,85,247,.1);border-color:var(--purple);color:var(--purple);}
+.tab.ao{background:rgba(249,115,22,.1);border-color:var(--orange);color:var(--orange);}
+
+/* KPI */
+.kg{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:10px;margin-bottom:16px;}
+.kpi{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px 15px;transition:transform .15s;}
+.kpi:hover{transform:translateY(-2px);box-shadow:0 4px 24px rgba(0,0,0,.3);}
+.kpi.ek{border-left:3px solid var(--elec);box-shadow:inset 3px 0 12px var(--glow-e);}
+.kpi.wk{border-left:3px solid var(--water);box-shadow:inset 3px 0 12px var(--glow-w);}
+.kpi.gk{border-left:3px solid var(--green);box-shadow:inset 3px 0 12px rgba(0,229,160,.12);}
+.kpi.rk{border-left:3px solid var(--red);box-shadow:inset 3px 0 12px rgba(255,69,96,.12);}
+.kpi.pk{border-left:3px solid var(--purple);box-shadow:inset 3px 0 12px rgba(192,132,252,.12);}
+.kl{font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;}
+.kv{font-family:'Bebas Neue',sans-serif;font-size:1.7rem;font-weight:400;line-height:1;letter-spacing:.04em;}
+.kpi.ek .kv{color:var(--elec);}.kpi.wk .kv{color:var(--water);}
+.kpi.gk .kv{color:var(--green);}.kpi.rk .kv{color:var(--red);}.kpi.pk .kv{color:var(--purple);}
+.ku{font-size:.67rem;color:var(--muted2);margin-top:2px;}
+.kc{font-size:.71rem;margin-top:4px;}
+.kc.up{color:var(--red);}.kc.dn{color:var(--green);}.kc.neu{color:var(--muted2);}
+
+/* GRID */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:13px;}
+.g3{display:grid;grid-template-columns:2fr 1fr;gap:12px;margin-bottom:13px;}
+.g31{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:13px;}
+@media(max-width:780px){.g2,.g3,.g31{grid-template-columns:1fr;}}
+
+/* CARD */
+.cc{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px;transition:border-color .2s;}
+.cc:hover{border-color:var(--border2);}
+.ct{font-family:'Bebas Neue',sans-serif;font-size:.95rem;font-weight:400;letter-spacing:.08em;margin-bottom:2px;text-transform:uppercase;}
+.cs{font-size:.7rem;color:var(--muted);margin-bottom:11px;}
+.cw2{position:relative;width:100%;}
+
+/* TABLE */
+.tc{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:13px;overflow-x:auto;}
+.th2{display:flex;justify-content:space-between;align-items:center;margin-bottom:11px;flex-wrap:wrap;gap:7px;}
+.tt{font-family:'Bebas Neue',sans-serif;letter-spacing:.05em;font-size:.86rem;font-weight:700;}
+.ts{font-size:.7rem;color:var(--muted);margin-top:2px;}
+table{width:100%;border-collapse:collapse;font-size:.78rem;}
+th{text-align:left;padding:7px 9px;color:var(--muted);font-weight:600;font-size:.67rem;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border);cursor:pointer;white-space:nowrap;}
+th:hover{color:var(--text);}
+td{padding:8px 9px;border-bottom:1px solid var(--border);color:var(--muted2);white-space:nowrap;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:rgba(255,255,255,.015);}
+.he{color:var(--elec);font-weight:600;}.hw{color:var(--water);font-weight:600;}
+.hg{color:var(--green);font-weight:600;}.hr{color:var(--red);font-weight:600;}
+.badge{display:inline-block;padding:2px 7px;border-radius:4px;font-size:.66rem;font-weight:700;}
+.bbg{background:rgba(16,185,129,.12);color:var(--green);}
+.bbr{background:rgba(239,68,68,.12);color:var(--red);}
+.bby{background:rgba(245,158,11,.12);color:var(--elec);}
+.bbp{background:rgba(168,85,247,.12);color:var(--purple);}
+
+/* INPUT */
+.ip{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:17px;margin-bottom:12px;}
+.ip h3{font-family:'Bebas Neue',sans-serif;letter-spacing:.05em;font-size:.91rem;font-weight:700;margin-bottom:3px;}
+.ip p{font-size:.75rem;color:var(--muted);margin-bottom:13px;}
+.ig{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;}
+.ig label{display:block;font-size:.67rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;}
+.ig input,.ig select{width:100%;background:var(--surface);border:1px solid var(--border2);color:var(--text);padding:7px 10px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.82rem;transition:border-color .15s;}
+.ig input:focus,.ig select:focus{outline:none;border-color:var(--water);}
+.ia{display:flex;gap:7px;margin-top:12px;flex-wrap:wrap;align-items:center;}
+.sok{font-size:.74rem;color:var(--green);display:none;}
+.ser{font-size:.74rem;color:var(--red);display:none;}
+
+/* PROGRESS */
+.pr{display:flex;align-items:center;gap:8px;margin-bottom:7px;}
+.prl{font-size:.71rem;color:var(--muted2);width:90px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.prb{flex:1;height:8px;background:var(--border);border-radius:999px;overflow:hidden;}
+.prf{height:100%;border-radius:999px;transition:width .6s ease;}
+.prv{font-size:.71rem;width:45px;text-align:right;flex-shrink:0;}
+
+/* FLOOR BAR */
+.fbr{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+.fbl{font-size:.71rem;color:var(--muted2);width:90px;flex-shrink:0;}
+.fbt{flex:1;height:7px;background:var(--border);border-radius:999px;overflow:hidden;}
+.fbf{height:100%;border-radius:999px;transition:width .6s ease;}
+.fbv{font-size:.71rem;color:var(--muted2);width:70px;text-align:right;flex-shrink:0;}
+
+/* SETTINGS */
+.sg{display:grid;grid-template-columns:repeat(auto-fit,minmax(195px,1fr));gap:13px;}
+.sc{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:15px;}
+.sc label{display:block;font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px;}
+.sc input{width:100%;background:var(--card);border:1px solid var(--border2);color:var(--text);padding:7px 11px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.86rem;}
+.sc input:focus{outline:none;border-color:var(--elec);}
+.sc .hint{font-size:.69rem;color:var(--muted);margin-top:4px;}
+
+/* TAB PANELS */
+.tp{display:none;}
+.tp.active{display:block;animation:fu .3s ease;}
+@keyframes fu{from{opacity:0;transform:translateY(7px);}to{opacity:1;transform:translateY(0);}}
+
+/* SPINNER */
+.spin{display:inline-block;width:13px;height:13px;border:2px solid var(--border2);border-top-color:var(--water);border-radius:50%;animation:sp .7s linear infinite;}
+@keyframes sp{to{transform:rotate(360deg);}}
+.si{background:var(--surface);border:1px solid var(--border2);color:var(--text);padding:6px 11px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.78rem;width:165px;}
+.si:focus{outline:none;border-color:var(--water);}
+
+/* DIVIDER */
+.div{display:flex;align-items:center;gap:10px;margin:18px 0 13px;}
+.div span{font-family:'Bebas Neue',sans-serif;letter-spacing:.05em;font-size:.73rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;white-space:nowrap;}
+.div::before,.div::after{content:'';flex:1;height:1px;background:var(--border);}
+
+/* TOAST */
+#toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(18px);background:var(--card);border:1px solid var(--border2);border-radius:999px;padding:8px 20px;font-size:.79rem;color:var(--text);opacity:0;transition:all .3s;pointer-events:none;z-index:9999;white-space:nowrap;}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+#toast.ok{border-color:var(--green);color:var(--green);}
+#toast.err{border-color:var(--red);color:var(--red);}
+
+
+/* TAGIHAN BREAKDOWN */
+.tg-section{background:var(--surface);border-radius:8px;padding:12px 16px;margin-bottom:8px;}
+.tg-section .tg-label{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px;}
+.tg-section .tg-val{font-family:'Bebas Neue',sans-serif;letter-spacing:.05em;font-size:1.1rem;font-weight:700;}
+
+/* PRINT */
+@media print{
+  body{background:#fff!important;color:#000!important;}
+  .tabs,.hr2,#setupBanner,#alertPanel,.ip,.btn,nav{display:none!important;}
+  .tp{display:block!important;}
+  .cc,.tc,.kpi{border:1px solid #ddd!important;background:#fff!important;break-inside:avoid;}
+  .kv,.ct{color:#000!important;}
+  .kpi.ek .kv{color:#b45309!important;}
+  .kpi.wk .kv{color:#0369a1!important;}
+  canvas{max-width:100%!important;}
+  .wrap{padding:10px!important;}
+}
+
+/* ═══════════════ MOBILE RESPONSIVE ═══════════════ */
+.lvmdp-label{display:block;font-size:.68rem;color:var(--muted2);margin-bottom:3px;}
+.lvmdp-input{width:100%;background:var(--bg2);color:var(--text);border:1px solid var(--border);
+  border-radius:6px;padding:5px 8px;font-size:.8rem;font-family:inherit;box-sizing:border-box;}
+.lvmdp-input:focus{outline:none;border-color:var(--accent);}
+.lvmdp-row-warn td{background:rgba(255,200,0,.08);}
+.lvmdp-row-crit td{background:rgba(255,60,60,.1);}
+/* Floor filter buttons */
+.floor-btn{
+  padding:5px 14px;border-radius:20px;border:1px solid var(--border);
+  background:var(--card);color:var(--muted2);font-size:.72rem;cursor:pointer;
+  transition:all .2s;font-family:inherit;
+}
+.floor-btn:hover{border-color:var(--accent);color:var(--accent);}
+.floor-btn.active{background:var(--accent);color:#000;border-color:var(--accent);font-weight:700;}
+/* Alert top panel */
+.alert-top-warn{background:rgba(255,200,0,.12);border:1px solid #ffc800;border-radius:8px;padding:10px 14px;margin-bottom:6px;}
+.alert-top-crit{background:rgba(255,60,60,.12);border:1px solid #ff3c3c;border-radius:8px;padding:10px 14px;margin-bottom:6px;}
+.alert-top-title{font-weight:700;font-size:.8rem;margin-bottom:4px;}
+.alert-top-item{font-size:.75rem;color:var(--muted2);margin-left:8px;}
+@media (max-width: 768px) {
+  /* Header */
+  .hd { padding: 10px 12px 0; }
+  .hl h1 { font-size: 1.4rem !important; }
+  .hl p  { font-size: .58rem !important; letter-spacing: .08em !important; }
+  .hr { flex-wrap: wrap; gap: 6px; padding: 8px 12px; }
+
+  /* Tabs — horizontal scroll */
+  .tabs { padding: 6px 12px; gap: 5px; overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab { font-size: .6rem; padding: 4px 9px; white-space: nowrap; flex-shrink: 0; }
+
+  /* Tab content */
+  .tp { padding: 10px 12px; }
+
+  /* KPI grid — 2 columns on mobile */
+  .kg { grid-template-columns: repeat(2, 1fr) !important; gap: 8px; }
+  .kpi { padding: 10px 10px 8px; }
+  .kl { font-size: .55rem; letter-spacing: .06em; }
+  .kv { font-size: 1.2rem !important; }
+  .ku { font-size: .62rem; }
+
+  /* Chart containers */
+  .cw, .cw2 { height: 180px !important; }
+  .cc { padding: 10px; }
+  .ct { font-size: .82rem; }
+  .cs { font-size: .68rem; }
+
+  /* Tagihan KPI — full width selisih */
+  #tagihanKpi { grid-template-columns: repeat(2, 1fr) !important; }
+  #tagihanKpi .kpi[style*="span 2"] { grid-column: span 2 !important; }
+
+  /* Input forms */
+  .ig { grid-template-columns: 1fr !important; gap: 8px; }
+  .ip { padding: 12px; margin-bottom: 10px; }
+  .ip h3 { font-size: .9rem; }
+  .ip p  { font-size: .72rem; }
+  input, select { font-size: .82rem !important; padding: 8px 10px !important; }
+  .btn { font-size: .68rem !important; padding: 8px 12px !important; }
+
+  /* Settings grid */
+  .sg { grid-template-columns: 1fr !important; }
+  .sc { padding: 10px; }
+
+  /* Divider */
+  .div { font-size: .72rem; margin: 10px 0 8px; }
+
+  /* Table — horizontal scroll */
+  .rt { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table { font-size: .68rem; }
+  th, td { padding: 4px 8px !important; white-space: nowrap; }
+
+  /* Header actions */
+  .ha { flex-wrap: wrap; gap: 5px; }
+  .ha .btn { font-size: .6rem; padding: 5px 8px; }
+
+  /* Month selector */
+  .ms { font-size: .75rem !important; }
+
+  /* Connection pill */
+  .conn-pill { font-size: .58rem; padding: 3px 7px; }
+
+  /* Overview top bar */
+  .ob { flex-wrap: wrap; gap: 8px; align-items: flex-start; }
+  .ob .ms { width: 100%; }
+
+  /* Import dropzone */
+  #dropZone { padding: 16px 10px; }
+
+  /* KPI span 2 on tagihan — keep full width */
+  .kpi[style*="grid-column:span 2"] { grid-column: 1 / -1 !important; }
+}
+
+@media (max-width: 400px) {
+  .hl h1 { font-size: 1.15rem !important; }
+  .kg { grid-template-columns: 1fr 1fr !important; gap: 6px; }
+  .kv { font-size: 1rem !important; }
+  .tab { font-size: .55rem; padding: 3px 7px; }
+  .cw, .cw2 { height: 150px !important; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- SETUP BANNER -->
+<div id="setupBanner">
+  <h3>⚙️ Setup Google Sheets — Lakukan Sekali Saja</h3>
+  <p>1. Buka Google Sheets → <b>Extensions → Apps Script</b> → paste kode di bawah → <b>Deploy → New Deployment → Web App → Anyone → Deploy</b><br>
+     2. Copy URL deployment → paste di sini → klik Simpan.</p>
+  <details style="margin-bottom:10px;">
+    <summary style="cursor:pointer;font-size:.78rem;color:var(--water);margin-bottom:6px;">📋 Lihat kode Apps Script</summary>
+    <pre class="cb">// ─── MENTENG REGENCY — Apps Script v4 ───
+// Support JSONP (callback) + direct JSON — bekerja dari file:// maupun https://
+
+function doGet(e) {
+  const action   = e.parameter.action   || 'read';
+  const callback = e.parameter.callback || '';   // JSONP support
+
+  let result;
+
+  if (action === 'write') {
+    try {
+      const ss        = SpreadsheetApp.getActiveSpreadsheet();
+      const sheetName = e.parameter.sheet;
+      const headers   = JSON.parse(e.parameter.headers);
+      const row       = JSON.parse(e.parameter.row);
+      let sheet = ss.getSheetByName(sheetName);
+      if (!sheet) sheet = ss.insertSheet(sheetName);
+      if (sheet.getLastRow() === 0) sheet.appendRow(headers);
+      sheet.appendRow(row);
+      result = { status: 'ok', sheet: sheetName, rows: sheet.getLastRow() };
+    } catch(err) {
+      result = { status: 'error', error: err.toString() };
+    }
+  } else {
+    try {
+      const ss        = SpreadsheetApp.getActiveSpreadsheet();
+      const sheetName = e.parameter.sheet;
+      if (!sheetName) { result = { rows: [] }; }
+      else {
+        const sheet = ss.getSheetByName(sheetName);
+        result = sheet ? { rows: sheet.getDataRange().getValues() } : { rows: [] };
+      }
+    } catch(err) {
+      result = { rows: [], error: err.toString() };
+    }
+  }
+
+  const json = JSON.stringify(result);
+  // Jika ada callback → JSONP (untuk file:// browser)
+  if (callback) {
+    return ContentService
+      .createTextOutput(callback + '(' + json + ')')
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  // Biasa → JSON
+  return ContentService
+    .createTextOutput(json)
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function doPost(e) {
+  // Redirect ke doGet handler
+  return doGet(e);
+}</pre>
+  </details>
+  <div class="url-row">
+    <input id="scriptUrl" type="url" placeholder="Paste URL Apps Script di sini... (https://script.google.com/macros/s/...)"/>
+    <button class="btn be" onclick="saveUrl()">💾 Simpan & Hubungkan</button>
+    <button class="btn bo bsm" onclick="testConn()">🔌 Test Koneksi</button>
+  </div>
+  <div id="connStatus" style="margin-top:8px;font-size:.77rem;color:var(--muted);"></div>
+
+</div>
+
+<!-- ALERT PANEL -->
+<div id="alertPanel">
+  <h4>⚠️ ANOMALI TERDETEKSI — Perlu Tindakan Segera <button class="btn bo bsm" style="margin-left:auto;font-size:.7rem;" onclick="document.getElementById('alertPanel').style.display='none'">✕ Tutup</button></h4>
+  <div id="alertList"></div>
+</div>
+
+<!-- HEADER -->
+<header>
+  <div class="hl">
+    <h1>⚡ <span class="ec">Listrik</span> &amp; 💧 <span class="wc">Air</span></h1>
+    <p>Apartemen Menteng Regency &nbsp;·&nbsp; Dashboard Monitoring Energy</p>
+  </div>
+  <div class="hr2">
+    <div id="connPill" style="display:none" class="conn-pill"><span class="dot"></span>Terhubung ke Sheets</div>
+    <select class="ms" id="monthSel" onchange="onMonthChange()"></select>
+    <button class="btn bp bsm" onclick="cetakPDF()">🖨 Cetak / PDF</button>
+    <button class="btn bo bsm" onclick="exportCSV()">⬇ CSV</button>
+    <button class="btn bo bsm" onclick="doRefresh()" title="Refresh data">🔄</button>
+  </div>
+</header>
+
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab ag" onclick="sw('overview',this,'ag')">📊 Overview</button>
+  <button class="tab" onclick="sw('listrik',this,'ae')">⚡ Listrik</button>
+  <button class="tab" onclick="sw('air',this,'aw')">💧 Air</button>
+  <button class="tab" onclick="sw('lantai',this,'ag')">🏢 Per Lantai</button>
+  <button class="tab" onclick="sw('unit',this,'ag')">🏠 Per Unit</button>
+  <button class="tab" onclick="sw('tren',this,'ap')">📈 Tren 12 Bulan</button>
+  <button class="tab" onclick="sw('tagihan',this,'ao')">🧾 Tagihan PLN &amp; PAM</button>
+  <button class="tab" onclick="sw('input',this,'ae')">✏️ Input</button>
+  <button class="tab" onclick="sw('riwayat',this,'ag')">📋 Riwayat</button>
+  <button class="tab" onclick="sw('setting',this,'ap')">⚙️ Pengaturan</button>
+  <button class="tab" onclick="sw('lvmdp',this,'ap')">⚡ LVMDP</button>
+</div>
+
+<div id="fileWarning" style="display:none;background:rgba(168,85,247,.08);border:1px solid rgba(168,85,247,.25);border-radius:8px;padding:9px 14px;margin-bottom:14px;font-size:.76rem;color:#c4b5fd;">
+  ⚠️ <b>Mode file://</b> — Data dikirim via form submit. Untuk koneksi lebih stabil, upload file HTML ke Google Drive lalu buka dari sana.
+  <button onclick="this.parentElement.style.display='none'" style="float:right;background:transparent;border:none;color:#a78bfa;cursor:pointer;font-size:.8rem;">✕</button>
+</div>
+
+<!-- ══ OVERVIEW ══ -->
+<div id="tab-overview" class="tp active">
+  <div class="kg">
+    <div class="kpi ek"><div class="kl">Total Listrik Bulan Ini</div><div class="kv" id="k-elec">—</div><div class="ku">kWh</div><div class="kc" id="k-elec-vs"></div></div>
+    <div class="kpi wk"><div class="kl">Total Air Bulan Ini</div><div class="kv" id="k-water">—</div><div class="ku">m³</div><div class="kc" id="k-water-vs"></div></div>
+    <div class="kpi ek"><div class="kl">Est. Tagihan Listrik</div><div class="kv" id="k-ecost">—</div><div class="ku" id="k-eu">Juta Rupiah</div></div>
+    <div class="kpi wk"><div class="kl">Est. Tagihan Air</div><div class="kv" id="k-wcost">—</div><div class="ku" id="k-wu">Juta Rupiah</div></div>
+    <div class="kpi gk"><div class="kl">vs Bulan Lalu — Listrik</div><div class="kv" id="k-vsE" style="font-size:1.2rem">—</div><div class="ku">% perubahan</div></div>
+    <div class="kpi gk"><div class="kl">vs Bulan Lalu — Air</div><div class="kv" id="k-vsW" style="font-size:1.2rem">—</div><div class="ku">% perubahan</div></div>
+    <div class="kpi pk"><div class="kl">Unit Aktif Diinput</div><div class="kv" id="k-units">—</div><div class="ku">unit bulan ini</div></div>
+    <div class="kpi rk"><div class="kl">Anomali Terdeteksi</div><div class="kv" id="k-anom">0</div><div class="ku">unit perlu perhatian</div></div>
+  </div>
+  <div class="g2">
+    <div class="cc"><div class="ct">Pemakaian Listrik per Unit</div><div class="cs">kWh — merah = anomali atau melebihi target</div><div class="cw2" style="height:220px"><canvas id="cElecBar"></canvas></div></div>
+    <div class="cc"><div class="ct">Pemakaian Air per Unit</div><div class="cs">m³ — merah = anomali atau melebihi target</div><div class="cw2" style="height:220px"><canvas id="cWaterBar"></canvas></div></div>
+  </div>
+  <!-- Alert Panel akan muncul di sini via JS -->
+  <div id="alertPanelTop" style="display:none;margin:0 0 12px;"></div>
+
+  <!-- Grafik Harian -->
+  <div class="g2" style="margin-bottom:12px;">
+    <div class="cc">
+      <div class="ct">📅 Pemakaian Harian — Listrik</div>
+      <div class="cs">kWh per hari bulan ini (estimasi dari data input)</div>
+      <div class="cw2" style="height:200px"><canvas id="cDailyE"></canvas></div>
+    </div>
+    <div class="cc">
+      <div class="ct">📅 Pemakaian Harian — Air</div>
+      <div class="cs">m³ per hari bulan ini (estimasi dari data input)</div>
+      <div class="cw2" style="height:200px"><canvas id="cDailyW"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Grafik Tren Bulanan -->
+  <div class="cc" style="margin-bottom:12px;">
+    <div class="ct">📈 Tren Pemakaian Bulanan</div>
+    <div class="cs">Total kWh listrik &amp; m³ air per bulan — pantau tren jangka panjang</div>
+    <div class="cw2" style="height:220px"><canvas id="cTrendOverview"></canvas></div>
+  </div>
+
+  <div class="g3">
+    <div class="cc"><div class="ct">Common Area — Rincian Pemakaian</div><div class="cs">Listrik (kWh) &amp; Air (m³) per area</div><div id="caBars" style="margin-top:8px;"></div></div>
+    <div class="cc"><div class="ct">Proporsi Listrik</div><div class="cs">Tenant vs Common Area</div><div class="cw2" style="height:185px"><canvas id="cPie"></canvas></div></div>
+  </div>
+</div>
+
+<!-- ══ LISTRIK ══ -->
+<div id="tab-listrik" class="tp">
+  <div class="kg">
+    <div class="kpi ek"><div class="kl">Total Tenant</div><div class="kv" id="l-ten">—</div><div class="ku">kWh</div></div>
+    <div class="kpi ek"><div class="kl">Common Area</div><div class="kv" id="l-com">—</div><div class="ku">kWh</div></div>
+    <div class="kpi ek"><div class="kl">Rata-rata / Unit</div><div class="kv" id="l-avg">—</div><div class="ku">kWh/unit</div></div>
+    <div class="kpi ek"><div class="kl">vs Bulan Lalu</div><div class="kv" id="l-vs" style="font-size:1.2rem">—</div><div class="ku">% perubahan</div></div>
+    <div class="kpi rk"><div class="kl">Unit Tertinggi</div><div class="kv" id="l-top">—</div><div class="ku" id="l-top-u"></div></div>
+    <div class="kpi gk"><div class="kl">Di Bawah Target</div><div class="kv" id="l-under">—</div><div class="ku">unit efisien</div></div>
+  </div>
+  <div class="cc" style="margin-bottom:13px;">
+    <div class="ct">Listrik per Unit vs Rata-rata &amp; Target</div>
+    <div class="cs">Kuning = rata-rata | Merah putus-putus = batas target | Batang merah = melewati target</div>
+    <div class="cw2" style="height:240px"><canvas id="cElecUnit"></canvas></div>
+  </div>
+  <div class="cc" style="margin-bottom:13px;">
+    <div class="ct">Perbandingan Listrik: Bulan Ini vs Bulan Lalu</div>
+    <div class="cs">Per unit — lihat unit mana yang naik signifikan</div>
+    <div class="cw2" style="height:200px"><canvas id="cElecCmp"></canvas></div>
+  </div>
+</div>
+
+<!-- ══ AIR ══ -->
+<div id="tab-air" class="tp">
+  <div class="kg">
+    <div class="kpi wk"><div class="kl">Total Tenant</div><div class="kv" id="a-ten">—</div><div class="ku">m³</div></div>
+    <div class="kpi wk"><div class="kl">Common Area</div><div class="kv" id="a-com">—</div><div class="ku">m³</div></div>
+    <div class="kpi wk"><div class="kl">Rata-rata / Unit</div><div class="kv" id="a-avg">—</div><div class="ku">m³/unit</div></div>
+    <div class="kpi wk"><div class="kl">vs Bulan Lalu</div><div class="kv" id="a-vs" style="font-size:1.2rem">—</div><div class="ku">% perubahan</div></div>
+    <div class="kpi rk"><div class="kl">Unit Tertinggi</div><div class="kv" id="a-top">—</div><div class="ku" id="a-top-u"></div></div>
+    <div class="kpi rk"><div class="kl">Indikasi Kebocoran</div><div class="kv" id="a-leak">—</div><div class="ku">lokasi perlu cek</div></div>
+  </div>
+  <div class="cc" style="margin-bottom:13px;">
+    <div class="ct">Air per Unit vs Rata-rata &amp; Target</div>
+    <div class="cs">Garis merah = batas target</div>
+    <div class="cw2" style="height:230px"><canvas id="cWaterUnit"></canvas></div>
+  </div>
+  <div class="tc">
+    <div class="th2"><div><div class="tt">🔍 Deteksi Kebocoran — Baca Meter Malam</div><div class="ts">Meter bergerak jam 00.00–04.00 = indikasi kebocoran. Input data di tab ✏️ Input.</div></div></div>
+    <table><thead><tr><th>Lokasi</th><th>Bacaan (m³/jam)</th><th>Batas Normal</th><th>Selisih</th><th>Status</th><th>Tanggal</th></tr></thead>
+    <tbody id="leakBody"></tbody></table>
+  </div>
+</div>
+
+<!-- ══ PER LANTAI ══ -->
+<div id="tab-lantai" class="tp">
+  <div class="kg" id="floorKpi"></div>
+  <div class="g2">
+    <div class="cc"><div class="ct">Total Listrik per Lantai</div><div class="cs">kWh bulan ini</div><div class="cw2" style="height:210px"><canvas id="cFlE"></canvas></div></div>
+    <div class="cc"><div class="ct">Total Air per Lantai</div><div class="cs">m³ bulan ini</div><div class="cw2" style="height:210px"><canvas id="cFlW"></canvas></div></div>
+  </div>
+  <div class="g2">
+    <div class="cc">
+      <div class="ct">Progress Listrik vs Target per Lantai</div>
+      <div class="cs">Hijau ≤ 80% | Kuning 80–100% | Merah &gt; 100% target</div>
+      <div id="flElecProg" style="margin-top:10px;"></div>
+    </div>
+    <div class="cc">
+      <div class="ct">Progress Air vs Target per Lantai</div>
+      <div class="cs">Berdasarkan target per unit × jumlah unit aktif</div>
+      <div id="flWaterProg" style="margin-top:10px;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PER UNIT ══ -->
+<div id="tab-unit" class="tp">
+  <div class="tc">
+    <div class="th2">
+      <div><div class="tt">Data Pemakaian Per Unit</div><div class="ts">Merah = anomali | Kuning = mendekati target | Klik header untuk sort</div></div>
+      <input class="si" type="text" id="unitSearchInput" placeholder="🔍 Cari unit / lantai..." oninput="filterUnit(this.value)">
+    </div>
+    <div id="floorFilterBtns" style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 4px;">
+      <button class="floor-btn active" onclick="setFloorFilter('semua',this)">🏢 Semua</button>
+      <button class="floor-btn" onclick="setFloorFilter('Lantai 2',this)">Lantai 2</button>
+      <button class="floor-btn" onclick="setFloorFilter('Lantai 3',this)">Lantai 3</button>
+      <button class="floor-btn" onclick="setFloorFilter('Lantai 4',this)">Lantai 4</button>
+      <button class="floor-btn" onclick="setFloorFilter('Lantai 5',this)">Lantai 5</button>
+      <button class="floor-btn" onclick="setFloorFilter('Lantai 6',this)">Lantai 6</button>
+      <button class="floor-btn" onclick="setFloorFilter('Lantai 7',this)">Lantai 7</button>
+    </div>
+    <table><thead><tr>
+      <th onclick="su(0)">Unit ↕</th><th onclick="su(1)">Lantai ↕</th><th onclick="su(2)">Tipe ↕</th>
+      <th onclick="su(3)">Listrik ↕</th><th onclick="su(4)">vs Rata² ↕</th><th onclick="su(5)">vs Target ↕</th>
+      <th onclick="su(6)">Air ↕</th><th onclick="su(7)">vs Rata² ↕</th><th onclick="su(8)">vs Target ↕</th>
+      <th>Bulan</th><th>Status</th>
+    </tr></thead>
+    <tbody id="unitBody"></tbody></table>
+    <div id="unitEmpty" style="text-align:center;padding:26px;color:var(--muted);font-size:.82rem;display:none;">Belum ada data. Input pemakaian di tab ✏️ Input.</div>
+  </div>
+</div>
+
+<!-- ══ TREN 12 BULAN ══ -->
+<div id="tab-tren" class="tp">
+  <div class="kg">
+    <div class="kpi ek"><div class="kl">Rata-rata Listrik 12 Bln</div><div class="kv" id="t-ea">—</div><div class="ku">kWh/bulan</div></div>
+    <div class="kpi wk"><div class="kl">Rata-rata Air 12 Bln</div><div class="kv" id="t-wa">—</div><div class="ku">m³/bulan</div></div>
+    <div class="kpi ek"><div class="kl">⚡ Listrik Tertinggi — Rekening PLN</div><div class="kv" id="t-ep" style="font-size:1rem">—</div><div class="ku" id="t-epm">kWh (rekening gedung)</div></div>
+    <div class="kpi ek" style="border-left-color:var(--elec2);opacity:.85;"><div class="kl">⚡ Listrik Tertinggi — Meter Tenant</div><div class="kv" id="t-ep2" style="font-size:1rem">—</div><div class="ku" id="t-epm2">kWh (meter unit)</div></div>
+    <div class="kpi wk"><div class="kl">💧 Air Tertinggi — Rekening PAM</div><div class="kv" id="t-wp" style="font-size:1rem">—</div><div class="ku" id="t-wpm">m³ (rekening gedung)</div></div>
+    <div class="kpi wk" style="border-left-color:var(--water2);opacity:.85;"><div class="kl">💧 Air Tertinggi — Meter Tenant</div><div class="kv" id="t-wp2" style="font-size:1rem">—</div><div class="ku" id="t-wpm2">m³ (meter unit)</div></div>
+  </div>
+  <div class="cc" style="margin-bottom:13px;"><div class="ct">Tren Listrik 12 Bulan</div><div class="cs">kWh meter tenant vs kWh rekening PLN gedung</div><div class="cw2" style="height:220px"><canvas id="cTrE"></canvas></div></div>
+  <div class="cc" style="margin-bottom:13px;"><div class="ct">Tren Air 12 Bulan</div><div class="cs">m³ meter tenant vs m³ rekening PAM gedung</div><div class="cw2" style="height:220px"><canvas id="cTrW"></canvas></div></div>
+  <div class="cc" style="margin-bottom:13px;"><div class="ct">Estimasi Tagihan Bulanan 12 Bulan</div><div class="cs">Listrik + Air (Juta Rupiah)</div><div class="cw2" style="height:190px"><canvas id="cTrC"></canvas></div></div>
+</div>
+
+<!-- ══ INPUT ══ -->
+<div id="tab-input" class="tp">
+  <!-- ── IMPORT FILE ── -->
+  <div class="ip" style="border-color:var(--purple);background:rgba(192,132,252,.04);">
+    <h3 style="color:var(--purple);">📂 Import dari File Excel / CSV</h3>
+    <p>Upload file laporan meteran (Excel/CSV). Dashboard otomatis membaca kolom, cocokkan jika perlu, lalu simpan semua unit ke Google Sheets sekaligus — tidak perlu input satu per satu.</p>
+    <div style="background:rgba(192,132,252,.06);border:1px solid rgba(192,132,252,.2);border-radius:8px;padding:9px 13px;font-size:.74rem;color:var(--muted2);margin-bottom:10px;">
+      💡 <b>Format yang didukung:</b> File Excel dari sistem meteran apapun. Dashboard akan otomatis mendeteksi kolom unit, meter awal & akhir listrik, dan air. Jika tidak terdeteksi otomatis, pilih manual dari dropdown.
+    </div>
+
+    <div style="border:2px dashed rgba(192,132,252,.35);border-radius:10px;padding:22px;text-align:center;margin-bottom:14px;cursor:pointer;transition:all .2s;" id="dropZone">
+      <div style="font-size:2rem;margin-bottom:6px;">📄</div>
+      <div style="font-size:.82rem;color:var(--muted2);">Drag & drop file di sini, atau</div>
+      <label style="display:inline-block;margin-top:8px;padding:7px 16px;background:var(--purple);color:#fff;border-radius:4px;font-family:'Space Mono',monospace;font-size:.72rem;font-weight:700;cursor:pointer;letter-spacing:.03em;text-transform:uppercase;">
+        📂 PILIH FILE
+        <input type="file" id="importFile" accept=".xlsx,.xls,.csv" style="display:none;">
+      </label>
+      <div style="font-size:.7rem;color:var(--muted);margin-top:6px;">Mendukung .xlsx · .xls · .csv</div>
+    </div>
+
+    <!-- Column Mapping -->
+    <div id="importMapping" style="display:none;">
+      <div style="font-family:'Space Mono',monospace;font-size:.72rem;color:var(--purple);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px;">⚙ Cocokkan Kolom File dengan Data Dashboard</div>
+      <div class="ig" id="mappingGrid"></div>
+      <div style="margin-top:10px;background:var(--surface);border-radius:8px;padding:10px 13px;font-size:.75rem;color:var(--muted2);max-height:160px;overflow-y:auto;">
+        <div style="font-family:'Space Mono',monospace;font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;">Preview 3 baris pertama:</div>
+        <div id="importPreview" style="overflow-x:auto;"></div>
+      </div>
+      <div style="margin-top:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <div style="font-size:.75rem;color:var(--muted2);">Bulan: </div>
+        <select id="importMonth" class="ms" style="font-size:.78rem;"></select>
+        <button class="btn bp" onclick="importData()" style="flex:1;">
+          <span id="importBtnTxt">⬆ IMPORT SEMUA DATA KE SHEETS</span>
+          <span id="importSpinner" class="spin" style="display:none;vertical-align:middle;margin-left:6px;"></span>
+        </button>
+      </div>
+      <div id="importProgress" style="display:none;margin-top:10px;">
+        <div style="font-size:.75rem;color:var(--muted2);margin-bottom:5px;" id="importProgressTxt">Menyimpan...</div>
+        <div style="background:var(--border);border-radius:999px;height:8px;overflow:hidden;">
+          <div id="importProgressBar" style="height:100%;background:var(--purple);border-radius:999px;transition:width .3s;width:0%;"></div>
+        </div>
+      </div>
+      <div id="importResult" style="display:none;margin-top:10px;padding:10px 14px;border-radius:8px;font-size:.78rem;"></div>
+    </div>
+  </div>
+
+  <!-- ── MANUAL INPUT ── -->
+  <div class="ip">
+    <h3>⚡💧 Input Manual Pemakaian Unit Tenant</h3>
+    <p>Data tersimpan ke Google Sheets dan semua grafik otomatis update.</p>
+    <div class="ig">
+      <div><label>Nomor Unit</label><input type="text" id="i-unit" placeholder="cth: 301"></div>
+      <div><label>Lantai</label><select id="i-floor"><option>Lantai 2</option><option>Lantai 3</option><option>Lantai 4</option><option>Lantai 5</option><option>Lantai 6</option><option>Lantai 7</option><option>Lantai 8</option><option>Lantai 9</option></select></div>
+      <div><label>Tipe Unit</label><select id="i-type"><option>Isi / Berpenghuni</option><option>Kosong</option></select></div>
+      <div><label>Bulan</label><select id="i-month"></select></div>
+      <div>
+        <label>Listrik Meter Awal (kWh)</label>
+        <div style="display:flex;gap:6px;">
+          <input type="number" id="i-ea" placeholder="1240" step="0.01" style="flex:1;">
+          <button class="btn" onclick="fotoMeter('ea')" style="background:rgba(245,158,11,.15);border:1px solid var(--elec);color:var(--elec);padding:8px 10px;" title="Foto meter">📷</button>
+        </div>
+      </div>
+      <div>
+        <label>Listrik Meter Akhir (kWh)</label>
+        <div style="display:flex;gap:6px;">
+          <input type="number" id="i-eb" placeholder="1432" step="0.01" style="flex:1;">
+          <button class="btn" onclick="fotoMeter('eb')" style="background:rgba(245,158,11,.15);border:1px solid var(--elec);color:var(--elec);padding:8px 10px;" title="Foto meter">📷</button>
+        </div>
+      </div>
+      <div>
+        <label>Air Meter Awal (m³)</label>
+        <div style="display:flex;gap:6px;">
+          <input type="number" id="i-wa" placeholder="340" step="0.01" style="flex:1;">
+          <button class="btn" onclick="fotoMeter('wa')" style="background:rgba(6,182,212,.15);border:1px solid var(--water);color:var(--water);padding:8px 10px;" title="Foto meter">📷</button>
+        </div>
+      </div>
+      <div>
+        <label>Air Meter Akhir (m³)</label>
+        <div style="display:flex;gap:6px;">
+          <input type="number" id="i-wb" placeholder="388" step="0.01" style="flex:1;">
+          <button class="btn" onclick="fotoMeter('wb')" style="background:rgba(6,182,212,.15);border:1px solid var(--water);color:var(--water);padding:8px 10px;" title="Foto meter">📷</button>
+        </div>
+      </div>
+      <div><label>Dicatat Oleh</label><input type="text" id="i-by" placeholder="Nama teknisi"></div>
+      <div><label>Catatan</label><input type="text" id="i-note" placeholder="opsional"></div>
+    </div>
+    <div class="ia">
+      <button class="btn be" onclick="saveUnit()"><span id="ut">💾 Simpan ke Sheets</span><span id="us" class="spin" style="display:none;vertical-align:middle;margin-left:5px;"></span></button>
+      <button class="btn bo" onclick="clearUnit()">✕ Bersihkan</button>
+      <span class="sok" id="ok-u">✅ Tersimpan di Google Sheets!</span>
+      <span class="ser" id="err-u">❌ Gagal. Cek URL Apps Script.</span>
+    </div>
+  </div>
+
+  <div class="ip">
+    <h3>🏢 Input Common Area</h3>
+    <p>Catat pemakaian pompa, lift, taman, car wash, changing room, dll.</p>
+    <div class="ig">
+      <div><label>Area</label>
+        <select id="i-area">
+          <optgroup label="⚡ Listrik">
+            <option>Pompa Air &amp; Tandon</option><option>Lift</option><option>Koridor &amp; Tangga</option>
+            <option>Lobby &amp; Resepsi</option><option>AC Lobby</option><option>CCTV &amp; Keamanan</option><option>Genset</option>
+          </optgroup>
+          <optgroup label="💧 Air">
+            <option>Air Taman</option><option>Car Wash</option><option>Changing Room</option>
+            <option>Toilet Umum</option><option>Kolam / Fountain</option>
+          </optgroup>
+          <optgroup label="Lainnya">
+            <option>Taman &amp; Area Luar</option><option>Lainnya</option>
+          </optgroup>
+        </select>
+      </div>
+      <div><label>Jenis Utilitas</label><select id="i-util"><option>Listrik (kWh)</option><option>Air (m³)</option></select></div>
+      <div><label>Bulan</label><select id="i-ca-month"></select></div>
+      <div><label>Meter Awal</label><input type="number" id="i-ca-a" placeholder="0"></div>
+      <div><label>Meter Akhir</label><input type="number" id="i-ca-b" placeholder="0"></div>
+      <div><label>Dicatat Oleh</label><input type="text" id="i-ca-by" placeholder="Nama teknisi"></div>
+      <div><label>Catatan</label><input type="text" id="i-ca-note" placeholder="opsional"></div>
+    </div>
+    <div class="ia">
+      <button class="btn bw" onclick="saveCommon()"><span id="ct2">💾 Simpan</span><span id="cs2" class="spin" style="display:none;vertical-align:middle;margin-left:5px;"></span></button>
+      <button class="btn bo" onclick="clearCommon()">✕ Bersihkan</button>
+      <span class="sok" id="ok-c">✅ Tersimpan!</span>
+      <span class="ser" id="err-c">❌ Gagal.</span>
+    </div>
+  </div>
+
+  <div class="ip">
+    <h3>🔍 Input Deteksi Kebocoran (Baca Meter Malam)</h3>
+    <p>Catat bacaan meter jam 00.00–04.00. Otomatis terdeteksi jika &gt; 0.1 m³/jam.</p>
+    <div class="ig">
+      <div><label>Lokasi</label><input type="text" id="i-lk-loc" placeholder="cth: Shaft Lt 3-4"></div>
+      <div><label>Bacaan Meter (m³/jam)</label><input type="number" step="0.01" id="i-lk-val" placeholder="0.00"></div>
+      <div><label>Tanggal</label><input type="date" id="i-lk-date"></div>
+      <div><label>Dicatat Oleh</label><input type="text" id="i-lk-by" placeholder="Nama teknisi"></div>
+    </div>
+    <div class="ia">
+      <button class="btn bg2" onclick="saveLeak()"><span id="lt2">💾 Simpan Deteksi</span><span id="ls2" class="spin" style="display:none;vertical-align:middle;margin-left:5px;"></span></button>
+      <span class="sok" id="ok-l">✅ Tersimpan!</span>
+      <span class="ser" id="err-l">❌ Gagal.</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══ RIWAYAT ══ -->
+<div id="tab-riwayat" class="tp">
+  <div class="tc">
+    <div class="th2">
+      <div><div class="tt">📋 Semua Data dari Google Sheets</div><div class="ts">Tersimpan permanen — bisa diakses siapa saja kapan saja</div></div>
+      <div style="display:flex;gap:7px;flex-wrap:wrap;">
+        <select class="si" id="sheetSel" onchange="loadRiwayat(this.value)" style="width:auto;">
+          <option value="Utilitas_Unit">Unit Tenant</option>
+          <option value="Utilitas_CommonArea">Common Area</option>
+          <option value="Kebocoran">Kebocoran</option>
+        </select>
+        <button class="btn bo bsm" onclick="loadRiwayat(document.getElementById('sheetSel').value)">🔄 Refresh</button>
+      </div>
+    </div>
+    <div id="rwLoad" style="text-align:center;padding:20px;color:var(--muted);display:none;"><span class="spin"></span> Memuat dari Google Sheets...</div>
+    <table id="rwTable" style="display:none;"><thead><tr id="rwHead"></tr></thead><tbody id="rwBody"></tbody></table>
+    <div id="rwEmpty" style="text-align:center;padding:26px;color:var(--muted);font-size:.82rem;">Belum ada data. Input terlebih dahulu di tab ✏️ Input.</div>
+  </div>
+</div>
+
+<!-- ══ PENGATURAN ══ -->
+<div id="tab-setting" class="tp">
+  <div class="div"><span>⚡ Tarif Listrik PLN — LWBP &amp; WBP</span></div>
+  <div class="sg">
+    <div class="sc">
+      <label>Tarif LWBP (Rp/kWh)</label>
+      <input type="number" id="s-lwbp" value="1035.78" step="0.01" onchange="saveSettings()">
+      <div class="hint">Luar Waktu Beban Puncak — jam normal</div>
+    </div>
+    <div class="sc">
+      <label>Tarif WBP (Rp/kWh)</label>
+      <input type="number" id="s-wbp" value="1553.67" step="0.01" onchange="saveSettings()">
+      <div class="hint">Waktu Beban Puncak — biasanya 17.00–22.00</div>
+    </div>
+    <div class="sc">
+      <label>Tarif kVArh (Rp/kVArh)</label>
+      <input type="number" id="s-kvarh" value="1114.74" step="0.01" onchange="saveSettings()">
+      <div class="hint">Daya reaktif — dari rekening PLN</div>
+    </div>
+    <div class="sc">
+      <label>Estimasi % Pemakaian WBP</label>
+      <input type="number" id="s-rasio-wbp" value="19" min="0" max="100" onchange="saveSettings()">
+      <div class="hint">% dari total kWh yang masuk WBP. Contoh: 19 = 19% WBP, 81% LWBP</div>
+    </div>
+    <div class="sc" style="border-color:var(--green);">
+      <label>⭐ Tarif Listrik Tenant (Rp/kWh)</label>
+      <input type="number" id="s-tenant-e" value="1699.53" step="0.01" onchange="saveSettings()">
+      <div class="hint">Tarif dasar yang ditagihkan ke penghuni unit.</div>
+    </div>
+    <div class="sc" style="border-color:var(--green);">
+      <label>⭐ Minimum kWh Lantai 2–3</label>
+      <input type="number" id="s-min-lt23" value="350" onchange="saveSettings()">
+      <div class="hint">Minimum pemakaian tagihan Lantai 2 & 3. Jika pemakaian lebih rendah, tetap ditagih minimum ini.</div>
+    </div>
+    <div class="sc" style="border-color:var(--green);">
+      <label>⭐ Minimum kWh Lantai 4–7</label>
+      <input type="number" id="s-min-lt47" value="550" onchange="saveSettings()">
+      <div class="hint">Minimum pemakaian tagihan Lantai 4–7.</div>
+    </div>
+    <div class="sc" style="border-color:var(--green);">
+      <label>⭐ PJU — Pajak Penerangan Jalan (%)</label>
+      <input type="number" id="s-pju" value="3" step="0.1" min="0" max="20" onchange="saveSettings()">
+      <div class="hint">% dari tagihan listrik. Default 3%.</div>
+    </div>
+    <div class="sc" style="border-color:var(--green);">
+      <label>⭐ Biaya Admin Listrik (%)</label>
+      <input type="number" id="s-admin" value="10" step="0.1" min="0" max="50" onchange="saveSettings()">
+      <div class="hint">% dari tagihan listrik. Default 10%.</div>
+    </div>
+    <div class="sc" style="border-color:var(--green);">
+      <label>⭐ PPN (%)</label>
+      <input type="number" id="s-ppn" value="11" step="0.1" min="0" max="20" onchange="saveSettings()">
+      <div class="hint">PPN untuk Total Invoice. Default 11%.</div>
+    </div>
+  </div>
+  <div class="div"><span>💧 Tarif Air PAM — Bertingkat</span></div>
+  <div class="sg">
+    <div class="sc">
+      <label>Tier 1 — Batas (m³)</label>
+      <input type="number" id="s-pam-t1-lim" value="10" onchange="saveSettings()">
+      <div class="hint">Batas pemakaian tier 1 (0 s/d batas ini)</div>
+    </div>
+    <div class="sc">
+      <label>Tier 1 — Tarif (Rp/m³)</label>
+      <input type="number" id="s-pam-t1-rate" value="12550" onchange="saveSettings()">
+      <div class="hint">Tarif untuk 0 – batas tier 1</div>
+    </div>
+    <div class="sc">
+      <label>Tier 2 — Batas (m³)</label>
+      <input type="number" id="s-pam-t2-lim" value="20" onchange="saveSettings()">
+      <div class="hint">Batas pemakaian tier 2</div>
+    </div>
+    <div class="sc">
+      <label>Tier 2 — Tarif (Rp/m³)</label>
+      <input type="number" id="s-pam-t2-rate" value="17500" onchange="saveSettings()">
+      <div class="hint">Tarif untuk batas tier 1 – batas tier 2</div>
+    </div>
+    <div class="sc">
+      <label>Tier 3 — Tarif (Rp/m³)</label>
+      <input type="number" id="s-pam-t3-rate" value="21500" onchange="saveSettings()">
+      <div class="hint">Tarif untuk pemakaian di atas batas tier 2</div>
+    </div>
+    <div class="sc" style="border-color:var(--green);">
+      <label>⭐ Tarif Air Tenant (Rp/m³)</label>
+      <input type="number" id="s-tenant-w" value="21500" onchange="saveSettings()">
+      <div class="hint">Tarif pemakaian per m³.</div>
+    </div>
+    <div class="sc" style="border-color:var(--green);">
+      <label>⭐ Biaya Beban Air (Rp/bulan)</label>
+      <input type="number" id="s-pam-beban" value="47510" onchange="saveSettings()">
+      <div class="hint">Biaya tetap per unit per bulan. Default Rp 47.510.</div>
+    </div>
+    <div class="sc" style="border-color:var(--green);">
+      <label>⭐ Biaya Administrasi Air (Rp/bulan)</label>
+      <input type="number" id="s-pam-adm" value="15000" onchange="saveSettings()">
+      <div class="hint">Biaya administrasi per unit. Default Rp 15.000.</div>
+    </div>
+  </div>
+  <div class="div"><span>Target &amp; Batas Pemakaian Per Unit</span></div>
+  <div class="sg">
+    <div class="sc"><label>Target Listrik / Unit (kWh/bulan)</label><input type="number" id="s-tle" value="250" onchange="saveSettings()"><div class="hint">Unit melebihi ini → ditandai merah.</div></div>
+    <div class="sc"><label>Target Air / Unit (m³/bulan)</label><input type="number" id="s-tlw" value="60" onchange="saveSettings()"><div class="hint">Unit melebihi ini → ditandai merah.</div></div>
+    <div class="sc"><label>Batas Anomali Listrik (% di atas rata²)</label><input type="number" id="s-ae" value="150" onchange="saveSettings()"><div class="hint">Contoh: 150 = 150% di atas rata-rata → anomali.</div></div>
+    <div class="sc"><label>Batas Anomali Air (% di atas rata²)</label><input type="number" id="s-aw" value="150" onchange="saveSettings()"><div class="hint">Contoh: 150 = 150% di atas rata-rata → anomali.</div></div>
+  </div>
+
+  <div class="div"><span>Koneksi Google Sheets</span></div>
+  <div class="sg">
+    <div class="sc" style="grid-column:1/-1;"><label>URL Apps Script</label><input type="url" id="s-url" placeholder="https://script.google.com/macros/s/..." onchange="saveSettings()"><div class="hint">URL deployment Apps Script Google Sheets.</div></div>
+  </div>
+  <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;">
+    <button class="btn bg2" onclick="saveSettings();toast('✅ Pengaturan disimpan!','ok')">💾 Simpan Pengaturan</button>
+    <button class="btn bo" onclick="resetSettings()">↩ Reset ke Default</button>
+    <button class="btn bp" onclick="document.getElementById('scriptModal').style.display='flex'">📋 Lihat Kode Apps Script v4</button>
+  </div>
+</div>
+
+<!-- MODAL APPS SCRIPT CODE -->
+<div id="scriptModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9998;align-items:center;justify-content:center;padding:20px;" onclick="if(event.target===this)this.style.display='none'">
+  <div style="background:#0e1420;border:1px solid #243450;border-radius:14px;padding:24px;max-width:780px;width:100%;max-height:90vh;overflow-y:auto;position:relative;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <div>
+        <div style="font-family:'Bebas Neue',sans-serif;letter-spacing:.05em;font-size:1rem;font-weight:700;color:#e2e8f0;">📋 Kode Apps Script v4</div>
+        <div style="font-size:.75rem;color:#64748b;margin-top:2px;">Copy semua kode ini → paste di Google Apps Script → Deploy sebagai Web App</div>
+      </div>
+      <button onclick="document.getElementById('scriptModal').style.display='none'" style="background:transparent;border:1px solid #243450;color:#94a3b8;border-radius:8px;padding:5px 12px;cursor:pointer;font-size:.8rem;">✕ Tutup</button>
+    </div>
+    <button onclick="copyScript()" style="background:#10b981;color:#000;border:none;border-radius:8px;padding:8px 16px;font-weight:700;cursor:pointer;font-size:.82rem;margin-bottom:10px;width:100%;">📋 Copy Semua Kode</button>
+    <pre id="scriptCode" style="background:#080c14;border:1px solid #1e2d42;border-radius:8px;padding:14px;font-size:.72rem;color:#a3e0ff;overflow-x:auto;white-space:pre;line-height:1.6;user-select:all;">// ═══════════════════════════════════════════════
+// MENTENG REGENCY — Apps Script v5 FINAL
+// Deploy sebagai Web App:
+//   Execute as: Me
+//   Who has access: Anyone
+// ═══════════════════════════════════════════════
+
+function doGet(e) {
+  const action   = (e && e.parameter && e.parameter.action) || 'read';
+  const callback = (e && e.parameter && e.parameter.callback) || '';
+
+  let result;
+
+  // ── WRITE ──────────────────────────────────────
+  if (action === 'write') {
+    try {
+      const ss        = SpreadsheetApp.getActiveSpreadsheet();
+      const sheetName = e.parameter.sheet;
+      const headers   = JSON.parse(decodeURIComponent(e.parameter.headers));
+      const row       = JSON.parse(decodeURIComponent(e.parameter.row));
+
+      let sheet = ss.getSheetByName(sheetName);
+      if (!sheet) sheet = ss.insertSheet(sheetName);
+      if (sheet.getLastRow() === 0) sheet.appendRow(headers);
+      sheet.appendRow(row);
+      // Force Bulan column as plain text — prevent date auto-conversion
+      const bulanIdx = headers.indexOf('Bulan');
+      if(bulanIdx >= 0) {
+        sheet.getRange(sheet.getLastRow(), bulanIdx + 1).setNumberFormat('@STRING@');
+      }
+      result = { status: 'ok', sheet: sheetName, totalRows: sheet.getLastRow() - 1 };
+    } catch(err) {
+      result = { status: 'error', error: err.toString() };
+    }
+
+  // ── READ ───────────────────────────────────────
+  } else if (action === 'read') {
+    try {
+      const ss        = SpreadsheetApp.getActiveSpreadsheet();
+      const sheetName = e.parameter.sheet;
+      if (!sheetName) {
+        result = { rows: [] };
+      } else {
+        const sheet = ss.getSheetByName(sheetName);
+        result = sheet ? { rows: sheet.getDataRange().getValues() } : { rows: [] };
+      }
+    } catch(err) {
+      result = { rows: [], error: err.toString() };
+    }
+
+  // ── PING (test koneksi) ────────────────────────
+  } else if (action === 'ping') {
+    result = { status: 'ok', message: 'Menteng Regency Apps Script aktif', time: new Date().toISOString() };
+
+  } else {
+    result = { status: 'error', error: 'Unknown action: ' + action };
+  }
+
+  const json = JSON.stringify(result);
+
+  // JSONP untuk file:// browser
+  if (callback) {
+    return ContentService
+      .createTextOutput(callback + '(' + json + ')')
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+
+  return ContentService
+    .createTextOutput(json)
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+// doPost redirect ke doGet (fallback)
+function doPost(e) {
+  return doGet(e);
+}</pre>
+    <div style="margin-top:12px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.3);border-radius:8px;padding:10px 14px;font-size:.76rem;color:#d4b978;line-height:1.7;">
+      <b>Langkah deploy:</b><br>
+      1. Buka Google Sheets → Extensions → Apps Script<br>
+      2. Hapus semua kode lama → paste kode di atas<br>
+      3. Klik <b>Deploy → Manage Deployments → ✏️ Edit → Version: New version → Deploy</b><br>
+      4. URL tidak berubah — tidak perlu update di dashboard<br>
+      5. Jika ini <b>deployment pertama</b>: Deploy → New Deployment → Web App → Execute as: <b>Me</b> → Who has access: <b>Anyone</b>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══ TAGIHAN PLN & PAM ══ -->
+<div id="tab-tagihan" class="tp">
+
+  <!-- INPUT TAGIHAN GEDUNG -->
+  <div class="ip">
+    <h3>🧾 Input Tagihan Resmi Gedung — PLN &amp; PAM</h3>
+    <p>Masukkan tagihan rekening bulanan gedung dari PLN dan PAM/PDAM. Data ini akan dibandingkan dengan total pemakaian tenant.</p>
+    <div class="ig">
+      <div><label>Bulan</label><select id="tg-month"></select></div>
+      <div><label>Total Tagihan PLN (Rp)</label><input type="number" id="tg-pln" placeholder="cth: 18750000"></div>
+      <div><label>Total kWh PLN (dari rekening)</label><input type="number" id="tg-pln-kwh" placeholder="cth: 12500"></div>
+      <div><label>Total Tagihan PAM (Rp)</label><input type="number" id="tg-pam" placeholder="cth: 22400000"></div>
+      <div><label>Total m³ PAM (dari rekening)</label><input type="number" id="tg-pam-m3" placeholder="cth: 3200"></div>
+      <div><label>No. Rekening PLN</label><input type="text" id="tg-pln-no" placeholder="cth: 5321000012345"></div>
+      <div><label>No. Rekening PAM</label><input type="text" id="tg-pam-no" placeholder="cth: 10234567"></div>
+      <div><label>Dicatat Oleh</label><input type="text" id="tg-by" placeholder="Nama supervisor"></div>
+    </div>
+    <div class="ia">
+      <button class="btn" style="background:var(--orange);color:#fff;" onclick="saveTagihan()">
+        <span id="tgt">💾 Simpan Tagihan ke Sheets</span>
+        <span id="tgs" class="spin" style="display:none;vertical-align:middle;margin-left:5px;"></span>
+      </button>
+      <button class="btn bo" onclick="clearTagihan()">✕ Bersihkan</button>
+      <span class="sok" id="ok-tg">✅ Tagihan tersimpan!</span>
+      <span class="ser" id="err-tg">❌ Gagal simpan.</span>
+    </div>
+  </div>
+
+  <!-- KPI PERBANDINGAN -->
+  <div class="div"><span>Perbandingan Tagihan Gedung vs Pemakaian Tenant — <span id="tg-bulan-label" style="color:var(--orange)">Pilih bulan</span></span></div>
+
+  <div class="kg" id="tagihanKpi" style="grid-template-columns:repeat(4,1fr);" data-cols="4">
+    <div class="kpi" style="border-left:3px solid var(--elec);">
+      <div class="kl">Tagihan PLN Gedung</div><div class="kv" id="tg-k-pln" style="color:var(--elec)">—</div>
+      <div class="ku">Rupiah (rekening resmi)</div>
+    </div>
+    <div class="kpi" style="border-left:3px solid var(--elec);">
+      <div class="kl">Total kWh PLN Gedung</div><div class="kv" id="tg-k-pln-kwh" style="color:var(--elec)">—</div>
+      <div class="ku">kWh (dari rekening PLN)</div>
+    </div>
+    <div class="kpi" style="border-left:3px solid var(--water);">
+      <div class="kl">Tagihan PAM Gedung</div><div class="kv" id="tg-k-pam" style="color:var(--water)">—</div>
+      <div class="ku">Rupiah (rekening resmi)</div>
+    </div>
+    <div class="kpi" style="border-left:3px solid var(--water);">
+      <div class="kl">Total m³ PAM Gedung</div><div class="kv" id="tg-k-pam-m3" style="color:var(--water)">—</div>
+      <div class="ku">m³ (dari rekening PAM)</div>
+    </div>
+    <div class="kpi" style="border-left:3px solid var(--green);">
+      <div class="kl">Total Tagihan Tenant — Listrik</div><div class="kv" id="tg-k-ten-e" style="color:var(--green)">—</div>
+      <div class="ku">Rp (dari data meter tenant)</div>
+    </div>
+    <div class="kpi" style="border-left:3px solid var(--green);">
+      <div class="kl">Total Tagihan Tenant — Air</div><div class="kv" id="tg-k-ten-w" style="color:var(--green)">—</div>
+      <div class="ku">Rp (dari data meter tenant)</div>
+    </div>
+    <div class="kpi rk" style="grid-column:span 2;">
+      <div class="kl">Selisih Listrik — PLN Gedung dikurangi Total Tenant</div>
+      <div id="tg-k-diff-e" style="font-family:'Bebas Neue',sans-serif;letter-spacing:.05em;font-size:1.25rem;font-weight:700;color:var(--red);margin:4px 0;word-break:break-all;">—</div>
+      <div class="ku" id="tg-k-diff-e-u">Tagihan PLN − tagihan tenant listrik</div>
+    </div>
+    <div class="kpi rk" style="grid-column:span 2;">
+      <div class="kl">Selisih Air — PAM Gedung dikurangi Total Tenant</div>
+      <div id="tg-k-diff-w" style="font-family:'Bebas Neue',sans-serif;letter-spacing:.05em;font-size:1.25rem;font-weight:700;color:var(--red);margin:4px 0;word-break:break-all;">—</div>
+      <div class="ku" id="tg-k-diff-w-u">Tagihan PAM − tagihan tenant air</div>
+    </div>
+  </div>
+
+  <!-- CHARTS PERBANDINGAN -->
+  <div class="g2">
+    <div class="cc">
+      <div class="ct">Perbandingan Tagihan Listrik</div>
+      <div class="cs">PLN Gedung vs Total Tenant vs Common Area (Rp)</div>
+      <div class="cw2" style="height:240px"><canvas id="cTgElec"></canvas></div>
+    </div>
+    <div class="cc">
+      <div class="ct">Perbandingan Tagihan Air</div>
+      <div class="cs">PAM Gedung vs Total Tenant vs Common Area (Rp)</div>
+      <div class="cw2" style="height:240px"><canvas id="cTgWater"></canvas></div>
+    </div>
+  </div>
+
+  <!-- BREAKDOWN TABLE -->
+  <div class="tc">
+    <div class="th2">
+      <div>
+        <div class="tt">📊 Breakdown Tagihan Lengkap</div>
+        <div class="ts">Analisis selisih tagihan gedung vs kontribusi tenant &amp; common area</div>
+      </div>
+    </div>
+    <table>
+      <thead><tr>
+        <th>Komponen</th>
+        <th>Listrik (kWh / Rp)</th>
+        <th>Air (m³ / Rp)</th>
+        <th>% dari Total Gedung</th>
+        <th>Keterangan</th>
+      </tr></thead>
+      <tbody id="tagihanBody"></tbody>
+    </table>
+  </div>
+
+  <!-- TREN TAGIHAN -->
+  <div class="div"><span>📈 Grafik Tren Tagihan Bulanan</span></div>
+  <div class="cc" style="margin-bottom:13px;">
+    <div class="ct">⚡ Tren Tagihan Listrik — PLN Gedung vs Tenant</div>
+    <div class="cs">Perbandingan tagihan listrik gedung (PLN) vs total tagihan tenant per bulan (Juta Rp)</div>
+    <div class="cw2" style="height:260px"><canvas id="cTgTrenE"></canvas></div>
+  </div>
+  <div class="cc" style="margin-bottom:13px;">
+    <div class="ct">💧 Tren Tagihan Air — PAM Gedung vs Tenant</div>
+    <div class="cs">Perbandingan tagihan air gedung (PAM) vs total tagihan tenant per bulan (Juta Rp)</div>
+    <div class="cw2" style="height:260px"><canvas id="cTgTrenW"></canvas></div>
+  </div>
+  <div class="cc" style="margin-bottom:13px;">
+    <div class="ct">📊 Selisih Tagihan per Bulan (Gedung − Tenant)</div>
+    <div class="cs">Selisih = bagian yang ditanggung gedung untuk common area. Merah = gedung menanggung, Hijau = tenant over.</div>
+    <div class="cw2" style="height:220px"><canvas id="cTgTrenDiff"></canvas></div>
+  </div>
+
+  <!-- RIWAYAT TAGIHAN -->
+  <div class="tc" style="margin-top:13px;">
+    <div class="th2">
+      <div><div class="tt">📋 Riwayat Tagihan Gedung</div><div class="ts">Data tagihan PLN &amp; PAM tersimpan di Google Sheets</div></div>
+      <button class="btn bo bsm" onclick="loadTagihanHistory()">🔄 Muat Data</button>
+    </div>
+    <div id="tgHistLoad" style="text-align:center;padding:18px;color:var(--muted);display:none;"><span class="spin"></span> Memuat...</div>
+    <table id="tgHistTable" style="display:none;"><thead><tr id="tgHistHead"></tr></thead><tbody id="tgHistBody"></tbody></table>
+    <div id="tgHistEmpty" style="text-align:center;padding:22px;color:var(--muted);font-size:.81rem;">Belum ada data tagihan. Input tagihan gedung di atas.</div>
+  </div>
+
+</div>
+
+<div id="tab-lvmdp" class="tp">
+  <div class="tc">
+    <div class="th2" style="flex-wrap:wrap;gap:8px;">
+      <div>
+        <div class="tt">⚡ Log Harian LVMDP</div>
+        <div class="ts">Pencatatan 4x sehari — 06.00, 12.00, 18.00, 00.00</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <select id="lvmdpPanel" onchange="renderLvmdpLog()" style="background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-size:.8rem;">
+          <option value="1">LVMDP 1</option>
+          <option value="2">LVMDP 2</option>
+        </select>
+        <input type="date" id="lvmdpDate" style="background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-size:.8rem;" onchange="renderLvmdpLog()">
+        <button onclick="exportLvmdpPdf()" style="background:var(--accent);color:#000;border:none;border-radius:6px;padding:6px 14px;font-size:.78rem;cursor:pointer;font-weight:700;">🖨 Cetak PDF</button>
+      </div>
+    </div>
+
+    <!-- Alert LVMDP -->
+    <div id="lvmdpAlert" style="display:none;margin:8px 0;"></div>
+
+    <!-- Input Form -->
+    <div id="lvmdpInputForm" style="margin:12px 0;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;">
+      <div style="font-size:.85rem;font-weight:700;color:var(--accent);margin-bottom:10px;">
+        ➕ Input Pembacaan — <span id="lvmdpInputLabel">—</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin-bottom:10px;">
+        <div><label class="lvmdp-label">Jam</label>
+          <select id="li_jam" class="lvmdp-input">
+            <option>06:00</option><option>12:00</option><option>18:00</option><option>00:00</option>
+          </select></div>
+        <div><label class="lvmdp-label">Teg. R (V)</label><input id="li_vr" type="number" class="lvmdp-input" placeholder="380"></div>
+        <div><label class="lvmdp-label">Teg. S (V)</label><input id="li_vs" type="number" class="lvmdp-input" placeholder="380"></div>
+        <div><label class="lvmdp-label">Teg. T (V)</label><input id="li_vt" type="number" class="lvmdp-input" placeholder="380"></div>
+        <div><label class="lvmdp-label">Arus R (A)</label><input id="li_ir" type="number" class="lvmdp-input" placeholder="0"></div>
+        <div><label class="lvmdp-label">Arus S (A)</label><input id="li_is" type="number" class="lvmdp-input" placeholder="0"></div>
+        <div><label class="lvmdp-label">Arus T (A)</label><input id="li_it" type="number" class="lvmdp-input" placeholder="0"></div>
+        <div><label class="lvmdp-label">Frekuensi (Hz)</label><input id="li_hz" type="number" step="0.1" class="lvmdp-input" placeholder="50"></div>
+        <div><label class="lvmdp-label">Cos φ</label><input id="li_pf" type="number" step="0.01" class="lvmdp-input" placeholder="0.95"></div>
+        <div><label class="lvmdp-label">kW</label><input id="li_kw" type="number" step="0.1" class="lvmdp-input" placeholder="0"></div>
+        <div><label class="lvmdp-label">Cap. Bank</label><input id="li_cb" type="number" step="0.1" class="lvmdp-input" placeholder="0"></div>
+        <div><label class="lvmdp-label">THD I (%)</label><input id="li_thdi" type="number" step="0.1" class="lvmdp-input" placeholder="0"></div>
+        <div><label class="lvmdp-label">THD V (%)</label><input id="li_thdv" type="number" step="0.1" class="lvmdp-input" placeholder="0"></div>
+        <div style="grid-column:1/-1"><label class="lvmdp-label">Catatan</label><input id="li_note" type="text" class="lvmdp-input" placeholder="Kondisi normal / catatan lain..." style="width:100%;"></div>
+      </div>
+      <button onclick="saveLvmdpEntry()" style="background:var(--green);color:#000;border:none;border-radius:6px;padding:8px 20px;font-size:.82rem;cursor:pointer;font-weight:700;">💾 Simpan ke Sheets</button>
+      <span id="lvmdpSaveStatus" style="margin-left:10px;font-size:.78rem;color:var(--muted2);"></span>
+    </div>
+
+    <!-- Log Table -->
+    <div style="overflow-x:auto;">
+      <table id="lvmdpTable" style="width:100%;font-size:.75rem;border-collapse:collapse;">
+        <thead>
+          <tr style="background:var(--bg2);color:var(--muted2);">
+            <th style="padding:7px 8px;text-align:left;white-space:nowrap;">Tanggal</th>
+            <th style="padding:7px 8px;">Jam</th>
+            <th style="padding:7px 8px;">VR</th><th style="padding:7px 8px;">VS</th><th style="padding:7px 8px;">VT</th>
+            <th style="padding:7px 8px;">IR</th><th style="padding:7px 8px;">IS</th><th style="padding:7px 8px;">IT</th>
+            <th style="padding:7px 8px;">Hz</th><th style="padding:7px 8px;">Cos φ</th>
+            <th style="padding:7px 8px;">kW</th><th style="padding:7px 8px;">Cap.B</th>
+            <th style="padding:7px 8px;">THD I</th><th style="padding:7px 8px;">THD V</th>
+            <th style="padding:7px 8px;text-align:left;">Catatan</th>
+          </tr>
+        </thead>
+        <tbody id="lvmdpBody"></tbody>
+      </table>
+      <div id="lvmdpEmpty" style="display:none;text-align:center;padding:30px;color:var(--muted2);">Belum ada data untuk tanggal ini</div>
+    </div>
+
+    <!-- Charts -->
+    <div class="g2" style="margin-top:14px;">
+      <div class="cc"><div class="ct">Tren Tegangan (V)</div><div class="cw2" style="height:180px"><canvas id="cLvVolt"></canvas></div></div>
+      <div class="cc"><div class="ct">Tren Arus (A)</div><div class="cw2" style="height:180px"><canvas id="cLvAmp"></canvas></div></div>
+    </div>
+    <div class="g2" style="margin-top:10px;">
+      <div class="cc"><div class="ct">kW & Cos φ</div><div class="cw2" style="height:180px"><canvas id="cLvKw"></canvas></div></div>
+      <div class="cc"><div class="ct">THD I & THD V (%)</div><div class="cw2" style="height:180px"><canvas id="cLvThd"></canvas></div></div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /wrap -->
+<div id="toast"></div>
+
+<script>// ═══════════════ FOTO METER (Claude Vision) ═══════════════
+let fotoTargetField = null;
+let fotoStream      = null;
+let fotoCaptured    = false;
+let fotoB64         = null;
+
+function saveApiKey(){
+  const k = document.getElementById('s-apikey').value.trim();
+  if(!k){ toast('Masukkan API Key dulu','err'); return; }
+  CFG.apiKey = k; saveCFG();
+  document.getElementById('apikey-status').innerHTML = '<span style="color:var(--green)">✅ API Key tersimpan</span>';
+  toast('API Key disimpan','ok');
+}
+async function testApiKey(){
+  const k = CFG.apiKey || document.getElementById('s-apikey').value.trim();
+  if(!k){ toast('Masukkan API Key dulu','err'); return; }
+  const st = document.getElementById('apikey-status');
+  st.innerHTML = '<span style="color:var(--muted2)">⏳ Testing...</span>';
+  try{
+    const r = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','anthropic-version':'2023-06-01','x-api-key':k,'anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:10,messages:[{role:'user',content:'Hi'}]})
+    });
+    const d = await r.json();
+    if(d.content){ st.innerHTML='<span style="color:var(--green)">✅ API Key valid & berfungsi</span>'; }
+    else { st.innerHTML='<span style="color:var(--red)">❌ '+( d.error?.message||'Invalid key')+'</span>'; }
+  } catch(e){ st.innerHTML='<span style="color:var(--red)">❌ Gagal konek: '+e.message+'</span>'; }
+}
+
+window.fotoMeter = async function(fieldId){
+  fotoTargetField = fieldId;
+  fotoCaptured    = false;
+  fotoB64         = null;
+
+  const isAir = fieldId.startsWith('w');
+  const isAwal = fieldId.endsWith('a');
+  document.getElementById('fotoTitle').textContent    = (isAir?'💧':'⚡')+' FOTO METER '+(isAir?'AIR':'LISTRIK');
+  document.getElementById('fotoSubtitle').textContent = 'Meter '+(isAwal?'Awal':'Akhir')+' — arahkan ke angka display';
+  document.getElementById('fotoResult').style.display = 'none';
+  document.getElementById('fotoError').style.display  = 'none';
+  document.getElementById('fotoRetakeBtn').style.display = 'none';
+  document.getElementById('fotoUseBtn').style.display    = 'none';
+  document.getElementById('fotoCaptureBtn').style.display = 'block';
+  document.getElementById('fotoLoading').style.display   = 'none';
+  document.getElementById('fotoPreview').style.display   = 'none';
+  document.getElementById('fotoCanvas').style.display    = 'none';
+  document.getElementById('fotoVideo').style.display     = 'block';
+  document.getElementById('fotoModal').style.display     = 'flex';
+
+  try{
+    fotoStream = await navigator.mediaDevices.getUserMedia({
+      video:{ facingMode:'environment', width:{ideal:1280}, height:{ideal:960} }
+    });
+    document.getElementById('fotoVideo').srcObject = fotoStream;
+
+    // Check if torch/flash is supported
+    const track = fotoStream.getVideoTracks()[0];
+    const caps  = track.getCapabilities ? track.getCapabilities() : {};
+    const flashBtn = document.getElementById('fotoFlashBtn');
+    if(caps.torch){
+      flashBtn.style.display = 'block';
+      flashBtn.onclick = async function(){
+        const on = flashBtn.dataset.on === '1';
+        try{
+          await track.applyConstraints({ advanced:[{torch: !on}] });
+          flashBtn.dataset.on = on ? '0' : '1';
+          flashBtn.textContent = on ? '🔦 Flash' : '💡 Flash ON';
+          flashBtn.style.background = on ? 'rgba(255,255,255,.1)' : 'rgba(255,184,0,.3)';
+        } catch(e){ console.warn('Torch error',e); }
+      };
+    } else {
+      flashBtn.style.display = 'none';
+    }
+  } catch(e){
+    document.getElementById('fotoVideo').style.display='none';
+    document.getElementById('fotoError').style.display='block';
+    document.getElementById('fotoError').textContent='Kamera tidak tersedia. Gunakan tombol Pilih dari Galeri.';
+    console.warn('Camera error:',e);
+  }
+};
+
+window.closeFoto = function(){
+  if(fotoStream){
+    // Turn off torch before stopping
+    const track = fotoStream.getVideoTracks()[0];
+    if(track && track.getCapabilities && track.getCapabilities().torch){
+      track.applyConstraints({advanced:[{torch:false}]}).catch(()=>{});
+    }
+    fotoStream.getTracks().forEach(t=>t.stop());
+    fotoStream=null;
+  }
+  const fb = document.getElementById('fotoFlashBtn');
+  if(fb){ fb.dataset.on='0'; fb.textContent='🔦 Flash'; fb.style.background='rgba(255,255,255,.1)'; }
+  document.getElementById('fotoModal').style.display='none';
+};
+
+window.capturePhoto = function(){
+  const video  = document.getElementById('fotoVideo');
+  const canvas = document.getElementById('fotoCanvas');
+  canvas.width  = video.videoWidth  || 640;
+  canvas.height = video.videoHeight || 480;
+  canvas.getContext('2d').drawImage(video,0,0);
+  fotoB64 = canvas.toDataURL('image/jpeg',.85).split(',')[1];
+  // Show preview
+  document.getElementById('fotoPreview').src = 'data:image/jpeg;base64,'+fotoB64;
+  document.getElementById('fotoPreview').style.display='block';
+  document.getElementById('fotoVideo').style.display='none';
+  document.getElementById('fotoCaptureBtn').style.display='none';
+  if(fotoStream){ fotoStream.getTracks().forEach(t=>t.stop()); fotoStream=null; }
+  analyzePhoto();
+};
+
+window.handleGaleriPhoto = function(input){
+  const file = input.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e=>{
+    fotoB64 = e.target.result.split(',')[1];
+    // Draw ke fotoCanvas agar analyzePhoto bisa crop
+    const img2 = new Image();
+    img2.onload = function(){
+      const canvas = document.getElementById('fotoCanvas');
+      canvas.width = img2.naturalWidth;
+      canvas.height = img2.naturalHeight;
+      canvas.getContext('2d').drawImage(img2, 0, 0);
+      // fotoB64 tetap ada — analyzePhoto pakai canvas path (fotoB64=null)
+      fotoB64 = null;
+      analyzePhoto(); // img sudah loaded
+    };
+    img2.src = e.target.result;
+    document.getElementById('fotoPreview').src = e.target.result;
+    document.getElementById('fotoPreview').style.display='block';
+    document.getElementById('fotoVideo').style.display='none';
+    document.getElementById('fotoCaptureBtn').style.display='none';
+  };
+  reader.readAsDataURL(file);
+};
+
+async function analyzePhoto(){
+  document.getElementById('fotoLoading').style.display='block';
+  document.getElementById('fotoLoading').innerHTML='<span class="spin" style="vertical-align:middle;margin-right:6px;"></span>Membaca angka meteran...';
+  document.getElementById('fotoError').style.display='none';
+  document.getElementById('fotoResult').style.display='none';
+  document.getElementById('fotoRetakeBtn').style.display='none';
+  document.getElementById('fotoUseBtn').style.display='none';
+
+  const isAir = fotoTargetField && fotoTargetField.startsWith('w');
+
+  try{
+    // Jika foto dari galeri (fotoB64 sudah ada), pakai langsung
+    let b64;
+    console.log('[OCR] fotoB64 length at analyzePhoto:', fotoB64 ? fotoB64.length : 'null');
+    if(fotoB64){
+      // Gambar dari galeri — crop via Image element
+      const img = new Image();
+      await new Promise(res=>{ img.onload=res; img.src='data:image/jpeg;base64,'+fotoB64; });
+      const iw = img.naturalWidth, ih = img.naturalHeight;
+      const tiny = document.createElement('canvas');
+      tiny.width = 800; tiny.height = 260;
+      const tCtx = tiny.getContext('2d');
+      tCtx.filter = 'grayscale(1) contrast(2) brightness(1.1)';
+      // Crop tengah (area angka meteran)
+      const sx = Math.round(iw*0.05), sy = Math.round(ih*0.25);
+      const sw = Math.round(iw*0.9),  sh = Math.round(ih*0.45);
+      tCtx.drawImage(img, sx, sy, sw, sh, 0, 0, 800, 260);
+      b64 = tiny.toDataURL('image/jpeg', 0.92).split(',')[1];
+    } else {
+      // Foto dari kamera — crop canvas
+      const srcCanvas = document.getElementById('fotoCanvas');
+      const cw = srcCanvas.width, ch = srcCanvas.height;
+      const cx = Math.round(cw*0.125), cy = Math.round(ch*0.325);
+      const cW = Math.round(cw*0.75),  cH = Math.round(ch*0.35);
+      const tiny = document.createElement('canvas');
+      tiny.width = 800; tiny.height = 260;
+      const tCtx = tiny.getContext('2d');
+      tCtx.filter = 'grayscale(1) contrast(2) brightness(1.1)';
+      tCtx.drawImage(srcCanvas, cx, cy, cW, cH, 0, 0, 800, 260);
+      b64 = tiny.toDataURL('image/jpeg', 0.92).split(',')[1];
+    }
+    console.log('[OCR] b64 length:', b64.length);
+
+    // Kirim via fetch POST form-urlencoded — Apps Script baca dari e.parameter
+    const body = 'action=ocr&img=' + encodeURIComponent(b64);
+    const res = await fetch(CFG.url, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body: body,
+      redirect: 'follow'
+    });
+    const data = await res.json();
+
+    console.log('[OCR result]', data);
+    const text = data.text || '';
+    console.log('[OCR raw text]', text);
+
+    // Strategi 1: cari angka 4-6 digit berurutan (angka meteran)
+    // Gabungkan baris yang hanya berisi 1-2 digit jadi satu angka
+    const lines = text.split(/[\n\r]+/).map(l=>l.trim()).filter(l=>l);
+    let meterStr = '';
+    for(const line of lines){
+      // Kalau baris hanya berisi 1-2 digit, gabungkan
+      if(/^[0-9]{1,2}$/.test(line)) meterStr += line;
+      else if(/^[0-9]{3,6}$/.test(line)){ meterStr += line; break; }
+      else if(meterStr.length >= 4) break;
+      else meterStr = ''; // reset kalau ada teks lain
+    }
+
+    // Strategi 2: cari semua angka, ambil yang 4+ digit
+    const allNums = text.match(/[0-9]+/g) || [];
+    const longNums = allNums.filter(n=>n.length>=4).map(n=>parseInt(n));
+
+    let best = null;
+    if(meterStr.length >= 4){
+      best = parseInt(meterStr);
+    } else if(longNums.length > 0){
+      // Ambil angka 4-6 digit terbesar yang masuk akal untuk meteran
+      const candidates = longNums.filter(n=>n>=1000 && n<=999999);
+      if(candidates.length > 0) best = Math.max(...candidates);
+    }
+    console.log('[OCR] meterStr:', meterStr, '| longNums:', longNums, '| best:', best);
+
+    document.getElementById('fotoLoading').style.display='none';
+    if(best !== null){
+      document.getElementById('fotoAngkaInput').value = best;
+      document.getElementById('fotoSatuan').textContent = isAir ? 'm³' : 'kWh';
+      document.getElementById('fotoResult').style.display='block';
+      document.getElementById('fotoRetakeBtn').style.display='block';
+      document.getElementById('fotoUseBtn').style.display='block';
+    } else {
+      document.getElementById('fotoError').style.display='block';
+      document.getElementById('fotoError').innerHTML='Angka tidak terbaca.<br><small>Raw OCR: '+text+'</small>';
+      document.getElementById('fotoRetakeBtn').style.display='block';
+    }
+  } catch(e){
+    console.error('OCR error:',e);
+    document.getElementById('fotoLoading').style.display='none';
+    document.getElementById('fotoError').style.display='block';
+    document.getElementById('fotoError').textContent='Gagal: '+e.message;
+    document.getElementById('fotoRetakeBtn').style.display='block';
+  }
+}
+
+window.retakePhoto = function(){
+  // Reset file input agar file yang sama bisa dipilih lagi
+  const galeriInput = document.getElementById('galeriInput');
+  if(galeriInput) galeriInput.value = '';
+  document.getElementById('fotoPreview').style.display='none';
+  document.getElementById('fotoVideo').style.display='block';
+  document.getElementById('fotoCaptureBtn').style.display='block';
+  document.getElementById('fotoRetakeBtn').style.display='none';
+  document.getElementById('fotoUseBtn').style.display='none';
+  document.getElementById('fotoResult').style.display='none';
+  document.getElementById('fotoError').style.display='none';
+  document.getElementById('fotoLoading').style.display='none';
+  // Restart camera
+  navigator.mediaDevices.getUserMedia({video:{facingMode:'environment', width:{ideal:1280}, height:{ideal:960}}})
+    .then(s=>{
+      fotoStream=s;
+      document.getElementById('fotoVideo').srcObject=s;
+      const track=s.getVideoTracks()[0];
+      const caps=track.getCapabilities?track.getCapabilities():{};
+      const fb=document.getElementById('fotoFlashBtn');
+      if(caps.torch){ fb.style.display='block'; } else { fb.style.display='none'; }
+    })
+    .catch(()=>{});
+};
+
+window.useResult = function(){
+  const angka = parseFloat(document.getElementById('fotoAngkaInput').value);
+  if(!isNaN(angka) && fotoTargetField){
+    document.getElementById('i-'+fotoTargetField).value = angka;
+    toast('✅ Angka '+ angka +' dimasukkan ke form','ok');
+  }
+  closeFoto();
+};
+// ═══════════════════════════════════════════════════════════
+
+// ═══════════════ IMPORT FILE ═══════════════
+var importParsed = [];
+var file_name = '';
+
+window.readImportFile = function(file){
+  var reader = new FileReader();
+  reader.onload = function(ev){
+    try{
+      var wb = XLSX.read(ev.target.result, {type:'array', raw:true});
+      var ws = wb.Sheets[wb.SheetNames[0]];
+      var allRows = XLSX.utils.sheet_to_json(ws, {header:1, raw:true, defval:''});
+      var headerRowIdx = -1;
+      for(var ri=0; ri<allRows.length; ri++){
+        var row = allRows[ri];
+        if(row.some(function(v){ return /rentalunit|golongan/i.test(String(v||'')); })){
+          headerRowIdx = ri; break;
+        }
+      }
+      if(headerRowIdx < 0) headerRowIdx = 0;
+      var headers  = allRows[headerRowIdx].map(function(h){ return String(h||'').trim(); });
+      var dataRows = allRows.slice(headerRowIdx+1).filter(function(r){ return r.some(function(v){ return v!==''&&v!==null; }); });
+      var golIdx   = -1;
+      for(var hi=0;hi<headers.length;hi++){ if(/golongan|gol/i.test(headers[hi])){ golIdx=hi; break; } }
+      var hasGol = golIdx>=0 && dataRows.some(function(r){ return /W03|R3/i.test(String(r[golIdx]||'')); });
+      if(hasGol){ window.parseMentengFormat(headers, dataRows, golIdx); }
+      else { toast('Format tidak dikenali','err'); }
+    } catch(err){ console.error(err); toast('Gagal baca file: '+err.message,'err'); }
+  };
+  reader.readAsArrayBuffer(file);
+};
+
+window.parseMentengFormat = function(headers, dataRows, golIdx){
+  var iA=-1,iC=-1,iF=-1,iG=-1;
+  for(var i=0;i<headers.length;i++){
+    var h=headers[i];
+    if(iA<0 && /rentalunit|unit/i.test(h)) iA=i;
+    if(iC<0 && /status/i.test(h)) iC=i;
+    if(iF<0 && /awal|starting/i.test(h)) iF=i;
+    if(iG<0 && /akhir|ending/i.test(h)) iG=i;
+  }
+  var colA=iA>=0?iA:0, colC=iC>=0?iC:2, colF=iF>=0?iF:5, colG=iG>=0?iG:6;
+  var units = {};
+  for(var ri=0;ri<dataRows.length;ri++){
+    var r=dataRows[ri];
+    var unit=String(r[colA]||'').trim();
+    var status=String(r[colC]||'').trim().toUpperCase();
+    var gol=String(r[golIdx]||'').trim().toUpperCase();
+    var awal=parseFloat(String(r[colF]||'0').replace(',','.')) || 0;
+    var akhir=parseFloat(String(r[colG]||'0').replace(',','.')) || 0;
+    if(!unit||!gol) continue;
+    if(!units[unit]) units[unit]={unit:unit, lantai:'Lantai '+unit[0]};
+    if(gol==='W03'){ if(!units[unit].ws||status==='F'){units[unit].wa=awal;units[unit].wb=akhir;units[unit].ws=status;} }
+    else if(gol==='R3'){ if(!units[unit].es||status==='F'){units[unit].ea=awal;units[unit].eb=akhir;units[unit].es=status;} }
+  }
+  importParsed=[];
+  for(var k in units){ if(units[k].ea!==undefined||units[k].wa!==undefined) importParsed.push(units[k]); }
+  var prev=importParsed.slice(0,5);
+  var trows=prev.map(function(u){
+    var kwh=(u.ea!=null&&u.eb!=null)?Math.round((u.eb-u.ea)*100)/100:'—';
+    var m3=(u.wa!=null&&u.wb!=null)?Math.round((u.wb-u.wa)*100)/100:'—';
+    return '<tr><td style="padding:4px 8px;border:1px solid var(--border);font-weight:700;">'+u.unit+'</td>'
+      +'<td style="padding:4px 8px;border:1px solid var(--border);color:var(--elec);">'+(u.ea!=null?u.ea:'—')+'</td>'
+      +'<td style="padding:4px 8px;border:1px solid var(--border);color:var(--elec);">'+(u.eb!=null?u.eb:'—')+'</td>'
+      +'<td style="padding:4px 8px;border:1px solid var(--border);color:var(--elec);font-weight:700;">'+kwh+'</td>'
+      +'<td style="padding:4px 8px;border:1px solid var(--border);color:var(--water);">'+(u.wa!=null?u.wa:'—')+'</td>'
+      +'<td style="padding:4px 8px;border:1px solid var(--border);color:var(--water);">'+(u.wb!=null?u.wb:'—')+'</td>'
+      +'<td style="padding:4px 8px;border:1px solid var(--border);color:var(--water);font-weight:700;">'+m3+'</td></tr>';
+  }).join('');
+  var more=importParsed.length>5?'<tr><td colspan="7" style="padding:4px 8px;color:var(--muted);text-align:center;font-size:.65rem;">...dan '+(importParsed.length-5)+' unit lainnya</td></tr>':'';
+  document.getElementById('importPreview').innerHTML=
+    '<div style="color:var(--green);font-size:.75rem;margin-bottom:8px;">✅ <b>'+importParsed.length+' unit</b> terdeteksi — Format Menteng Regency</div>'
+    +'<table style="font-size:.7rem;border-collapse:collapse;width:100%;"><tr>'+
+    ['Unit','Lt.Awal','Lt.Akhir','kWh','Ar.Awal','Ar.Akhir','m³'].map(function(h){
+      return '<th style="padding:4px 8px;border:1px solid var(--border);color:var(--muted);">'+h+'</th>';
+    }).join('')+'</tr>'+trows+more+'</table>';
+  document.getElementById('mappingGrid').innerHTML='';
+  document.getElementById('importMonth').innerHTML=document.getElementById('i-month').innerHTML;
+  document.getElementById('importMapping').style.display='block';
+  toast('✅ '+importParsed.length+' unit siap diimport','ok');
+};
+
+window.importData = async function(){
+  if(!CFG.url){ toast('URL Apps Script belum diisi','err'); return; }
+  if(!importParsed.length){ toast('Upload file terlebih dahulu','err'); return; }
+  var month=gv('importMonth');
+  document.getElementById('importBtnTxt').textContent='MENGIMPOR...';
+  document.getElementById('importSpinner').style.display='inline-block';
+  document.getElementById('importProgress').style.display='block';
+  document.getElementById('importResult').style.display='none';
+  var ok=0, fail=0;
+  for(var i=0;i<importParsed.length;i++){
+    var d=importParsed[i];
+    var pct=Math.round(((i+1)/importParsed.length)*100);
+    document.getElementById('importProgressBar').style.width=pct+'%';
+    document.getElementById('importProgressTxt').textContent='Unit '+d.unit+' ('+( i+1)+'/'+importParsed.length+', '+pct+'%)...';
+    try{
+      await post2('Utilitas_Unit',
+        ['Timestamp','Unit','Lantai','Tipe','Bulan','Listrik Awal','Listrik Akhir','Pemakaian Listrik (kWh)','Air Awal','Air Akhir','Pemakaian Air (m3)','Dicatat Oleh','Catatan'],
+        [now(),d.unit,d.lantai,'Isi / Berpenghuni',month,
+         d.ea||0,d.eb||0,Math.round(((d.eb||0)-(d.ea||0))*100)/100,
+         d.wa||0,d.wb||0,Math.round(((d.wb||0)-(d.wa||0))*100)/100,
+         'Import:'+file_name,'']);
+      ok++;
+    }catch(e2){ console.error('import',d.unit,e2); fail++; }
+    if(i%3===2) await new Promise(function(r){setTimeout(r,300);});
+  }
+  document.getElementById('importBtnTxt').textContent='⬆ IMPORT SEMUA DATA KE SHEETS';
+  document.getElementById('importSpinner').style.display='none';
+  var res=document.getElementById('importResult');
+  res.style.cssText='display:block;margin-top:10px;padding:12px 16px;border-radius:8px;font-size:.8rem;'
+    +(fail===0?'background:rgba(0,229,160,.08);border:1px solid rgba(0,229,160,.3);color:var(--green);'
+              :'background:rgba(255,69,96,.08);border:1px solid rgba(255,69,96,.3);color:var(--red);');
+  res.innerHTML=fail===0?'✅ <b>'+ok+' unit berhasil diimport!</b> Dashboard sedang refresh...'
+    :'⚠️ <b>'+ok+' berhasil</b>, <b>'+fail+' gagal</b>.';
+  importParsed=[];
+  if(ok>0){ setTimeout(doRefresh,2000); toast('✅ '+ok+' unit diimport!','ok'); }
+};
+// ═══════════════════════════════════════════
+
+
+// ═══════════════════════════════════════════════════
+// CONFIG & STATE
+// ═══════════════════════════════════════════════════
+const SK = 'menteng_v3';
+let CFG = {
+  apiKey:'', url:'https://script.google.com/macros/s/AKfycbwjyhMCJrDsUfgpGqHV8_XUlay7EHALhIJDIkyehJ-JhyAzMCgXJJO5ayb80KFRS_qA5A/exec', tgtE:250, tgtW:60, anomE:150, anomW:150,
+  // Tarif PLN gedung (LWBP + WBP) — untuk hitung tagihan total gedung
+  tarifLWBP: 1035.78,
+  tarifWBP:  1553.67,
+  tarifKVArh: 1114.74,
+  rasioWBP:  0.19,
+  // Tarif PLN khusus tenant (tarif yang ditagihkan ke penghuni)
+  tarifTenantE: 1699.53,
+  pjuPct:   0.03,  // PJU (Pajak Penerangan Jalan) 3% dari tagihan
+  adminPct: 0.10,  // Biaya Admin 10% dari tagihan
+  ppnPct:   0.11,  // PPN 11% dari total (untuk Total Invoice)
+  minKwhLt23: 350, // Minimum pemakaian kWh Lantai 2-3
+  minKwhLt47: 550, // Minimum pemakaian kWh Lantai 4-7
+  // Tarif PAM gedung bertingkat — untuk hitung tagihan total gedung
+  pamTier1Limit: 10,   pamTier1Rate: 12550,
+  pamTier2Limit: 20,   pamTier2Rate: 17500,
+  pamTier3Rate:  21500,
+  // Tarif PAM khusus tenant (tarif yang ditagihkan ke penghuni)
+  tarifTenantW: 21500,
+  pamBiayaBeban: 47510,  // Biaya beban tetap per unit per bulan
+  pamBiayaAdm:   15000,  // Biaya administrasi (sebagian unit)
+  // Legacy
+  tarifE: 1134, tarifW: 21500
+};
+let unitData=[], prevData=[], trenData={}, charts={}, sortDir={};
+
+const BID  = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
+const BFULL= ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+const FLOORS= ['Lantai 2','Lantai 3','Lantai 4','Lantai 5','Lantai 6','Lantai 7','Lantai 8','Lantai 9'];
+
+// ═══════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════
+window.onload = () => {
+  loadCFG();
+  buildMonths();
+  document.getElementById('i-lk-date').value = new Date().toISOString().split('T')[0];
+  initCharts();
+  renderLeakDefault();
+  renderCaBars();
+  renderFloorKpi([]);
+  // Attach import file handlers after DOM ready
+  const importFileEl = document.getElementById('importFile');
+  if(importFileEl){
+    importFileEl.addEventListener('change', function(){
+      const f = this.files[0];
+      if(f){ window.file_name=f.name; window.readImportFile(f); }
+    });
+  }
+  const dropZoneEl = document.getElementById('dropZone');
+  if(dropZoneEl){
+    dropZoneEl.addEventListener('dragover',  e=>{ e.preventDefault(); dropZoneEl.style.borderColor='var(--purple)'; });
+    dropZoneEl.addEventListener('dragleave', e=>{ dropZoneEl.style.borderColor='rgba(192,132,252,.35)'; });
+    dropZoneEl.addEventListener('drop',      e=>{
+      e.preventDefault();
+      dropZoneEl.style.borderColor='rgba(192,132,252,.35)';
+      const f=e.dataTransfer.files[0];
+      if(f){ window.file_name=f.name; window.readImportFile(f); }
+    });
+    dropZoneEl.addEventListener('click', ()=> importFileEl && importFileEl.click());
+  }
+
+  if(CFG.url){ 
+    showConn(); 
+    doRefresh();
+  } else {
+    // Only show banner if no URL saved yet
+    document.getElementById('setupBanner').style.display = 'block';
+  }
+  // Show file:// warning inside settings tab only, not in banner
+  if(window.location.protocol === 'file:' && CFG.url){
+    document.getElementById('fileWarning').style.display = 'block';
+  }
+  initTagihanCharts();
+  // sync tg-month with monthSel default
+  document.getElementById('tg-month').innerHTML = document.getElementById('i-month').innerHTML;
+};
+
+// ═══════════════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════════════
+function loadCFG(){
+  // Priority: 1) localStorage, 2) URL query string ?url=...
+  const s = localStorage.getItem(SK);
+  if(s) CFG = {...CFG, ...JSON.parse(s)};
+
+  // Fallback: hardcoded default URL jika localStorage kosong
+  if(!CFG.url){
+    CFG.url = 'https://script.google.com/macros/s/AKfycbwjyhMCJrDsUfgpGqHV8_XUlay7EHALhIJDIkyehJ-JhyAzMCgXJJO5ayb80KFRS_qA5A/exec';
+  }
+  // Atau dari query string ?url=...
+  const qUrl = new URLSearchParams(window.location.search).get('url');
+  if(qUrl){ CFG.url = qUrl; saveCFG(); }
+  // PLN gedung
+  setVal('s-lwbp',CFG.tarifLWBP);  setVal('s-wbp',CFG.tarifWBP);
+  setVal('s-kvarh',CFG.tarifKVArh); setVal('s-rasio-wbp',Math.round(CFG.rasioWBP*100));
+  setVal('s-tenant-e', CFG.tarifTenantE);
+  setVal('s-pju',      Math.round((CFG.pjuPct||0.03)*100));
+  setVal('s-min-lt23', CFG.minKwhLt23||350);
+  setVal('s-min-lt47', CFG.minKwhLt47||550);
+  setVal('s-admin', Math.round((CFG.adminPct||0.10)*100));
+  setVal('s-ppn',   Math.round((CFG.ppnPct  ||0.11)*100));
+  // PAM gedung
+  setVal('s-pam-t1-lim',CFG.pamTier1Limit); setVal('s-pam-t1-rate',CFG.pamTier1Rate);
+  setVal('s-pam-t2-lim',CFG.pamTier2Limit); setVal('s-pam-t2-rate',CFG.pamTier2Rate);
+  setVal('s-pam-t3-rate',CFG.pamTier3Rate);
+  setVal('s-tenant-w',  CFG.tarifTenantW);
+  setVal('s-pam-beban', CFG.pamBiayaBeban||47510);
+  setVal('s-pam-adm',   CFG.pamBiayaAdm  ||15000);
+  // Target & anomali
+  setVal('s-tle',CFG.tgtE); setVal('s-tlw',CFG.tgtW);
+  setVal('s-ae',CFG.anomE); setVal('s-aw',CFG.anomW);
+  setVal('s-url',CFG.url);
+  if(CFG.url) setVal('scriptUrl',CFG.url);
+}
+function saveSettings(){
+  // PLN gedung
+  CFG.tarifLWBP  = +gv('s-lwbp')||1035.78;
+  CFG.tarifWBP   = +gv('s-wbp') ||1553.67;
+  CFG.tarifKVArh = +gv('s-kvarh')||1114.74;
+  CFG.rasioWBP   = (+gv('s-rasio-wbp')||19) / 100;
+  CFG.tarifTenantE = +gv('s-tenant-e')||1699.53;
+  CFG.pjuPct      = (+gv('s-pju')      || 3)   / 100;
+  CFG.minKwhLt23  =  +gv('s-min-lt23') || 350;
+  CFG.minKwhLt47  =  +gv('s-min-lt47') || 550;
+  CFG.adminPct = (+gv('s-admin')|| 10) / 100;
+  CFG.ppnPct   = (+gv('s-ppn')  || 11) / 100;
+  // PAM gedung
+  CFG.pamTier1Limit = +gv('s-pam-t1-lim') ||10;
+  CFG.pamTier1Rate  = +gv('s-pam-t1-rate')||12550;
+  CFG.pamTier2Limit = +gv('s-pam-t2-lim') ||20;
+  CFG.pamTier2Rate  = +gv('s-pam-t2-rate')||17500;
+  CFG.pamTier3Rate  = +gv('s-pam-t3-rate')||21500;
+  CFG.tarifTenantW   = +gv('s-tenant-w') ||21500;
+  CFG.pamBiayaBeban  = +gv('s-pam-beban')||47510;
+  CFG.pamBiayaAdm    = +gv('s-pam-adm')  ||15000;
+  // Legacy
+  CFG.tarifE = Math.round(CFG.tarifLWBP*(1-CFG.rasioWBP) + CFG.tarifWBP*CFG.rasioWBP);
+  CFG.tarifW = CFG.pamTier3Rate;
+  // Target & anomali
+  CFG.tgtE=+gv('s-tle')||250; CFG.tgtW=+gv('s-tlw')||60;
+  CFG.anomE=+gv('s-ae')||150; CFG.anomW=+gv('s-aw')||150;
+  const u=gv('s-url').trim(); if(u) CFG.url=u;
+  localStorage.setItem(SK,JSON.stringify(CFG));
+  updateDash();
+}
+function resetSettings(){
+  const url=CFG.url;
+  CFG={ url, tarifLWBP:1035.78, tarifWBP:1553.67, tarifKVArh:1114.74, rasioWBP:0.19,
+    pamTier1Limit:10, pamTier1Rate:12550, pamTier2Limit:20, pamTier2Rate:17500, pamTier3Rate:21500,
+    tarifE:1134, tarifW:21500, tgtE:250, tgtW:60, anomE:150, anomW:150 };
+  loadCFG(); saveSettings(); toast('↩ Reset ke default','ok');
+}
+
+// ═══════════════════════════════════════════════════
+// MONTHS (unlimited, dynamic)
+// ═══════════════════════════════════════════════════
+function buildMonths(){
+  const now=new Date(), cm=now.getMonth(), cy=now.getFullYear();
+  const opts=[];
+  for(let y=2024; y<=cy+2; y++){
+    for(let m=0; m<12; m++){
+      opts.push({val:`${BID[m]} ${y}`,lbl:`${BFULL[m]} ${y}`,cur:(m===cm&&y===cy)});
+    }
+  }
+  ['monthSel','i-month','i-ca-month','tg-month'].forEach(id=>{
+    const el=document.getElementById(id); if(!el) return;
+    el.innerHTML='';
+    (id==='monthSel'?opts:[...opts].reverse()).forEach(o=>{
+      const opt=document.createElement('option');
+      opt.value=o.val; opt.textContent=o.lbl;
+      if(o.cur) opt.selected=true;
+      el.appendChild(opt);
+    });
+  });
+}
+function prevMonth(s){
+  const p=s.split(' '), mi=BID.indexOf(p[0]), y=+p[1];
+  return mi===0?`${BID[11]} ${y-1}`:`${BID[mi-1]} ${y}`;
+}
+function onMonthChange(){
+  if(CFG.url) doRefresh();
+  else updateDash();
+}
+
+// ═══════════════════════════════════════════════════
+// SHEETS
+// ═══════════════════════════════════════════════════
+
+function saveUrl(){
+  const u=gv('scriptUrl').trim();
+  if(!u.startsWith('https://script.google.com')){toast('❌ URL tidak valid','err');return;}
+  CFG.url=u; setVal('s-url',u);
+  localStorage.setItem(SK,JSON.stringify(CFG));
+  showConn(); testConn();
+}
+function showConn(){
+  document.getElementById('setupBanner').style.display='none';
+  document.getElementById('connPill').style.display='flex';
+}
+async function testConn(){
+  if(!CFG.url){toast('❌ URL belum diisi','err');return;}
+  const st=document.getElementById('connStatus');
+  st.innerHTML='<span class="spin"></span> Menguji koneksi...';
+  // From file:// we can't use fetch — use script tag trick for GET
+  try {
+    await new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      // JSONP-style: Apps Script doesn't support JSONP, so use image ping instead
+      const img = new Image();
+      const url = CFG.url + '?sheet=Test&ping=1&t=' + Date.now();
+      img.onload = img.onerror = () => resolve();
+      img.src = url;
+      setTimeout(resolve, 4000); // timeout 4s
+    });
+    st.innerHTML = '✅ URL tersimpan! Data akan dikirim saat input.';
+    st.style.color = 'var(--green)';
+    showConn();
+    toast('✅ URL Apps Script disimpan!','ok');
+  } catch(e) {
+    st.innerHTML = '❌ Tidak dapat memverifikasi. Pastikan URL benar.';
+    st.style.color = 'var(--red)';
+  }
+}
+async function post2(sheet, headers, row){
+  if(!CFG.url) throw new Error('URL Apps Script kosong.');
+  const params = new URLSearchParams({
+    action:  'write',
+    sheet:   sheet,
+    headers: encodeURIComponent(JSON.stringify(headers)),
+    row:     encodeURIComponent(JSON.stringify(row)),
+    t:       Date.now()
+  });
+  const r = await fetch(CFG.url + '?' + params.toString());
+  const d = await r.json();
+  if(d.status === 'error') throw new Error(d.error);
+}
+
+async function getSheet(sheet){
+  if(!CFG.url) return [];
+  try {
+    const r = await fetch(`${CFG.url}?action=read&sheet=${encodeURIComponent(sheet)}&t=${Date.now()}`);
+    const d = await r.json();
+    if(!d.rows || d.rows.length < 2) return [];
+    const h = d.rows[0];
+    const result = d.rows.slice(1).map(row => {
+      const o={};
+      h.forEach((k,i) => {
+        let v = row[i];
+        // Google Sheets auto-converts "Mar 2026" to Date — convert back
+        if(k === 'Bulan' && v) {
+          const str = String(v);
+          if(str.includes('T') || str.includes('-') || (!isNaN(v) && +v > 40000)) {
+            const d = new Date(str.includes('T') ? str : (typeof v === 'number' ? new Date(1899,11,30+Math.floor(v)) : str));
+            if(!isNaN(d.getTime())) {
+              const BID2=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
+              v = BID2[d.getMonth()] + ' ' + d.getFullYear();
+            }
+          }
+        }
+        // Round numeric values to max 2 decimal places
+        if(typeof v === 'number' && !Number.isInteger(v)) {
+          v = Math.round(v * 100) / 100;
+        }
+        o[k] = v;
+      });
+      return o;
+    });
+    const sample = result.length > 0 ? ('sample Bulan=' + result[0]['Bulan']) : 'empty';
+    console.log('[getSheet] ' + sheet + ' -> ' + result.length + ' rows | ' + sample);
+    return result;
+  } catch(e) {
+    console.error('[getSheet] ERROR:', sheet, e.message);
+    return [];
+  }
+}
+// ── Ambil minimum kWh berdasarkan lantai ──
+function getMinKwh(unitOrLantai){
+  // Terima: "Lantai 3", "Lt 5", "3", atau nomor unit seperti "302", "506"
+  let lantaiNum = 0;
+  const str = String(unitOrLantai||'').toLowerCase().trim();
+  // Format "Lantai X" atau "Lt X"
+  const m1 = str.match(/lantai\s*(\d+)|lt\.?\s*(\d+)/);
+  if(m1) lantaiNum = parseInt(m1[1]||m1[2]);
+  // Format nomor unit: digit pertama = lantai (302 → lt 3)
+  else if(/^\d{3,4}$/.test(str.replace(/\s/g,''))) lantaiNum = parseInt(str[0]);
+  // Format angka langsung "3", "5"
+  else if(/^\d$/.test(str)) lantaiNum = parseInt(str);
+
+  if(lantaiNum >= 2 && lantaiNum <= 3) return CFG.minKwhLt23 || 350;
+  if(lantaiNum >= 4 && lantaiNum <= 7) return CFG.minKwhLt47 || 550;
+  return 0; // lantai tidak dikenali / tidak ada minimum
+}
+
+// ── Hitung tagihan listrik TENANT (tarif + PJU 3% + Admin 10%) ──
+// unitOrLantai: untuk menentukan minimum pemakaian (opsional)
+function calcTagihanTenantListrik(kwh, unitOrLantai){
+  if(!kwh && !unitOrLantai) return 0;
+  const minKwh   = getMinKwh(unitOrLantai);
+  const billKwh  = Math.max(kwh || 0, minKwh); // pakai mana yang lebih besar
+  if(billKwh <= 0) return 0;
+  const tagihan  = billKwh * (CFG.tarifTenantE || 1699.53);
+  const pju      = tagihan * (CFG.pjuPct   || 0.03);
+  const admin    = tagihan * (CFG.adminPct  || 0.10);
+  return Math.round(tagihan + pju + admin); // Total (belum PPN)
+}
+// ── Hitung Total Invoice tenant listrik (sudah PPN 11%) ──
+function calcInvoiceTenantListrik(kwh, unitOrLantai){
+  return Math.round(calcTagihanTenantListrik(kwh, unitOrLantai) * (1 + (CFG.ppnPct||0.11)));
+}
+
+// ── Hitung tagihan air TENANT ──
+// Formula: Total = (m³ × tarif) + Biaya Beban + Biaya Adm
+// Invoice  = Total × (1 + PPN)
+function calcTagihanTenantAir(m3){
+  if(!m3 || m3 <= 0) return 0;
+  const pemakaian  = m3 * (CFG.tarifTenantW  || 21500);
+  const biayaBeban = CFG.pamBiayaBeban || 47510;
+  const biayaAdm   = CFG.pamBiayaAdm   || 15000;
+  return Math.round(pemakaian + biayaBeban + biayaAdm);
+}
+function calcInvoiceTenantAir(m3){
+  if(!m3 || m3 <= 0) return 0;
+  return Math.round(calcTagihanTenantAir(m3) * (1 + (CFG.ppnPct || 0.11)));
+}
+
+// ── Hitung tagihan listrik bertingkat (LWBP + WBP) ──
+function calcTagihanListrik(kwh){
+  if(!kwh || kwh <= 0) return 0;
+  const wbpKwh  = Math.round(kwh * CFG.rasioWBP);
+  const lwbpKwh = kwh - wbpKwh;
+  return Math.round(lwbpKwh * CFG.tarifLWBP + wbpKwh * CFG.tarifWBP);
+}
+
+// ── Hitung tagihan air bertingkat PAM ──
+function calcTagihanAir(m3){
+  if(!m3 || m3 <= 0) return 0;
+  let total = 0;
+  const t1 = Math.min(m3, CFG.pamTier1Limit);
+  total += t1 * CFG.pamTier1Rate;
+  if(m3 > CFG.pamTier1Limit){
+    const t2 = Math.min(m3 - CFG.pamTier1Limit, CFG.pamTier2Limit - CFG.pamTier1Limit);
+    total += t2 * CFG.pamTier2Rate;
+  }
+  if(m3 > CFG.pamTier2Limit){
+    total += (m3 - CFG.pamTier2Limit) * CFG.pamTier3Rate;
+  }
+  return Math.round(total);
+}
+
+// Normalize bulan: convert ANY format back to "Mar 2026"
+function normBulan(v){
+  if(v === null || v === undefined || v === '') return '';
+  const BN = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
+  const str = String(v).trim();
+
+  // Already "Mar 2026" style
+  if(/^[A-Za-z]{3,4}\s+\d{4}$/.test(str)) {
+    // Normalize month name to BN format
+    const parts = str.split(/\s+/);
+    const mIdx = ['jan','feb','mar','apr','mei','may','jun','jul','agt','aug','sep','okt','oct','nov','des','dec']
+      .indexOf(parts[0].toLowerCase().slice(0,3));
+    const mMap = [0,1,2,3,4,4,5,6,7,7,8,9,9,10,11,11];
+    if(mIdx >= 0) return BN[mMap[mIdx]] + ' ' + parts[1];
+    return str;
+  }
+
+  // ISO string: "2026-01-31T17:00:00.000Z" or "2026-03-01"
+  if(str.match(/^\d{4}-\d{2}/)) {
+    const d = new Date(str);
+    if(!isNaN(d.getTime())) return BN[d.getUTCMonth()] + ' ' + d.getUTCFullYear();
+  }
+
+  // Google Sheets serial number
+  const num = parseFloat(v);
+  if(!isNaN(num) && num > 40000 && num < 60000) {
+    // Convert Excel/Sheets serial to date
+    const d = new Date((num - 25569) * 86400 * 1000);
+    if(!isNaN(d.getTime())) return BN[d.getUTCMonth()] + ' ' + d.getUTCFullYear();
+  }
+
+  // Log unknown format for debugging
+  console.warn('[normBulan] Unknown format:', JSON.stringify(v), typeof v);
+  return str;
+}
+
+async function doRefresh(){
+  if(!CFG.url) return;
+  try{
+    const month=gv('monthSel'), prev=prevMonth(month);
+    console.log('[Refresh] Loading month:', month);
+
+    // Load semua sheet paralel sekaligus — lebih cepat
+    const [allUnit, allTagihan, allCA, leaks] = await Promise.all([
+      getSheet('Utilitas_Unit'),
+      getSheet('Tagihan_Gedung'),
+      getSheet('Utilitas_CommonArea'),
+      getSheet('Kebocoran')
+    ]);
+
+    // ── Store full unit history for tagihan tren ──
+    window._allUnitHistory = allUnit;
+    // ── Store current month unit data for KPI ──
+    window._unitDataCurrent = unitData;
+
+    // ── Unit data ──
+    console.log('[Refresh] allUnit rows:', allUnit.length, '| allTagihan:', allTagihan.length, '| allCA:', allCA.length, '| leaks:', leaks.length);
+    if(allUnit.length > 0) console.log('[Refresh] sample row Bulan:', allUnit[0]['Bulan'], '| month filter:', month);
+    unitData = allUnit.filter(r=>normBulan(r['Bulan'])===month);
+    prevData  = allUnit.filter(r=>normBulan(r['Bulan'])===prev);
+    // also normalize all rows in allUnit for tren
+    allUnit.forEach(r=>{ r['Bulan']=normBulan(r['Bulan']); });
+    allTagihan.forEach(r=>{ if(r['Bulan']) r['Bulan']=normBulan(r['Bulan']); });
+    allCA.forEach(r=>{ if(r['Bulan']) r['Bulan']=normBulan(r['Bulan']); });
+    // Log raw bulan values for debugging
+    if(allUnit.length > 0) {
+      const rawBulan = allUnit.slice(0,3).map(r => JSON.stringify(r['Bulan']));
+      console.log('[Refresh] Raw Bulan values from Sheets:', rawBulan.join(', '));
+      const normBulans = allUnit.slice(0,3).map(r => normBulan(r['Bulan']));
+      console.log('[Refresh] After normBulan:', normBulans.join(', '));
+      console.log('[Refresh] Comparing with month:', JSON.stringify(month));
+    }
+    console.log('[Refresh] unitData for ' + month + ': ' + unitData.length + ' rows | prevData: ' + prevData.length);
+
+    // ── 12-month tren ──
+    const idx=BID.indexOf(month.split(' ')[0]), yr=+month.split(' ')[1];
+    const m12=[];
+    for(let i=11;i>=0;i--){let mi=idx-i,y=yr;if(mi<0){mi+=12;y--;}m12.push(`${BID[mi]} ${y}`);}
+    trenData={};
+    m12.forEach(m=>{
+      const d = allUnit.filter(r=>r['Bulan']===m);
+      const tg = tagihanData[m] || {};
+      trenData[m]={
+        e:    d.reduce((s,r)=>s+(+r['Pemakaian Listrik (kWh)']||0),0), // meter tenant
+        w:    d.reduce((s,r)=>s+(+r['Pemakaian Air (m3)']||0),0),       // meter tenant
+        plnKwh: tg.plnKwh || 0,   // kWh dari rekening PLN gedung
+        pamM3:  tg.pamM3  || 0    // m³ dari rekening PAM gedung
+      };
+    });
+
+    // ── Tagihan gedung (PLN & PAM) ──
+    tagihanData = {};
+    allTagihan.forEach(r=>{
+      const m = r['Bulan'];
+      if(m) tagihanData[m] = {
+        pln:    +r['Tagihan PLN (Rp)'] || 0,
+        plnKwh: +r['kWh PLN']          || 0,
+        pam:    +r['Tagihan PAM (Rp)'] || 0,
+        pamM3:  +r['m3 PAM']           || 0
+      };
+    });
+
+    // ── Common area — tambahkan ke KPI listrik & air ──
+    const caMonth = allCA.filter(r=>r['Bulan']===month);
+    const caElec  = caMonth.filter(r=>String(r['Jenis']||'').includes('Listrik')).reduce((s,r)=>s+(+r['Pemakaian']||0),0);
+    const caWater = caMonth.filter(r=>String(r['Jenis']||'').includes('Air')).reduce((s,r)=>s+(+r['Pemakaian']||0),0);
+    // Store for use in updateDash
+    window._caElec  = caElec;
+    window._caWater = caWater;
+
+    // ── Kebocoran ──
+    renderLeakFromSheets(leaks);
+
+    // ── Render semua ──
+    updateDash();
+    renderTren(m12);
+
+    // ── Render tagihan tab jika sedang aktif ──
+    if(document.getElementById('tab-tagihan').classList.contains('active')){
+      renderTagihan(month);
+    }
+
+    // ── Update KPI common area di listrik & air tab ──
+    setText('l-com', caElec.toLocaleString('id-ID'));
+    setText('a-com', caWater.toLocaleString('id-ID'));
+
+  } catch(e){ console.log('refresh error', e); }
+}
+
+// ═══════════════════════════════════════════════════
+// UPDATE DASHBOARD
+// ═══════════════════════════════════════════════════
+function updateDash(){
+  const ten=unitData.filter(r=>r['Tipe']!=='Kosong');
+  const eArr=ten.map(r=>+r['Pemakaian Listrik (kWh)']||0);
+  const wArr=ten.map(r=>+r['Pemakaian Air (m3)']||0);
+  const lbls=ten.map(r=>'U'+r['Unit']);
+
+  const totE=eArr.reduce((a,b)=>a+b,0), totW=wArr.reduce((a,b)=>a+b,0);
+  const avgE=eArr.length?totE/eArr.length:0, avgW=wArr.length?totW/wArr.length:0;
+
+  const prevTen=prevData.filter(r=>r['Tipe']!=='Kosong');
+  const prevE=prevTen.reduce((s,r)=>s+(+r['Pemakaian Listrik (kWh)']||0),0);
+  const prevW=prevTen.reduce((s,r)=>s+(+r['Pemakaian Air (m3)']||0),0);
+  const vsE=prevE?(((totE-prevE)/prevE)*100).toFixed(1):null;
+  const vsW=prevW?(((totW-prevW)/prevW)*100).toFixed(1):null;
+
+  const anomPct=1+CFG.anomE/100;
+  const anoms=ten.filter((_,i)=>eArr[i]>avgE*anomPct||wArr[i]>avgW*(1+CFG.anomW/100));
+
+  // ── KPI ──
+  setText('k-elec',totE.toLocaleString('id-ID'));
+  setText('k-water',totW.toLocaleString('id-ID'));
+  // KPI listrik: sum per unit dengan minimum lantai
+const totEKpi = (window._unitDataCurrent||[]).reduce((s,r)=>{
+  return s+calcTagihanTenantListrik(+r['Pemakaian Listrik (kWh)']||0, r['Lantai']||r['Unit']||'');
+},0);
+setText('k-ecost',(totEKpi/1e6).toFixed(1));
+  setText('k-wcost',(calcTagihanTenantAir(totW)/1e6).toFixed(1));
+  setText('k-eu','Juta Rp (tarif tenant Rp '+CFG.tarifTenantE.toLocaleString('id-ID')+'/kWh)');
+  setText('k-wu','Juta Rp (tarif tenant Rp '+CFG.tarifTenantW.toLocaleString('id-ID')+'/m³)');
+  setText('k-units',ten.length+' unit');
+  setText('k-anom',anoms.length);
+
+  // vs bulan lalu
+  const setVs=(id,val)=>{
+    const el=document.getElementById(id); if(!el) return;
+    if(val===null){el.textContent='—';el.style.color='var(--muted2)';return;}
+    const n=+val;
+    el.textContent=(n>0?'▲ +':'▼ ')+val+'%';
+    el.style.color=n>0?'var(--red)':'var(--green)';
+  };
+  setVs('k-vsE',vsE); setVs('k-vsW',vsW);
+  setVs('l-vs',vsE);  setVs('a-vs',vsW);
+
+  // Listrik tab KPI
+  setText('l-ten',totE.toLocaleString('id-ID'));
+  setText('l-avg',Math.round(avgE));
+  setText('l-under',eArr.filter(v=>v<=CFG.tgtE).length);
+  const maxEi=eArr.indexOf(Math.max(...eArr.concat([0])));
+  if(maxEi>=0){setText('l-top',eArr[maxEi]||'—');setText('l-top-u',ten[maxEi]?'Unit '+ten[maxEi]['Unit']:'');}
+
+  // Air tab KPI
+  setText('a-ten',totW.toLocaleString('id-ID'));
+  setText('a-avg',Math.round(avgW));
+  const maxWi=wArr.indexOf(Math.max(...wArr.concat([0])));
+  if(maxWi>=0){setText('a-top',wArr[maxWi]||'—');setText('a-top-u',ten[maxWi]?'Unit '+ten[maxWi]['Unit']:'');}
+
+  // Anomaly alert
+  renderAnomalyAlert(anoms,eArr,wArr,avgE,avgW);
+  renderAlertTop(anoms,eArr,wArr,avgE,avgW);
+
+  // Daily chart (estimasi: bagi pemakaian bulanan / hari dalam bulan)
+  renderDailyCharts(ten, eArr, wArr);
+
+  // Trend overview chart
+  renderTrendOverview();
+
+  // Charts
+  updBarChart(charts.elecBar, lbls, eArr, avgE, CFG.tgtE, 'e');
+  updBarChart(charts.waterBar, lbls, wArr, avgW, CFG.tgtW, 'w');
+  updBarChart(charts.elecUnit, lbls, eArr, avgE, CFG.tgtE, 'e', true);
+  updBarChart(charts.waterUnit, lbls, wArr, avgW, CFG.tgtW, 'w', true);
+
+  // Compare
+  if(charts.elecCmp){
+    const prevArr=prevTen.map(r=>+r['Pemakaian Listrik (kWh)']||0);
+    charts.elecCmp.data.labels=lbls;
+    charts.elecCmp.data.datasets[0].data=eArr;
+    charts.elecCmp.data.datasets[1].data=prevArr.slice(0,eArr.length);
+    charts.elecCmp.update();
+  }
+
+  // Pie
+  if(charts.pie){ charts.pie.data.datasets[0].data=[totE, Math.round(totE*0.45)]; charts.pie.update(); }
+
+  // Unit table
+  renderUnitTable(ten,eArr,wArr,avgE,avgW);
+
+  // Floor
+  renderFloorData(ten,eArr,wArr);
+}
+
+// ═══════════════════════════════════════════════════
+// ANOMALY ALERT
+// ═══════════════════════════════════════════════════
+function renderAnomalyAlert(anoms,eArr,wArr,avgE,avgW){
+  const panel=document.getElementById('alertPanel');
+  const list=document.getElementById('alertList');
+  if(!anoms.length){ panel.style.display='none'; return; }
+  panel.style.display='block';
+  list.innerHTML=anoms.map(r=>{
+    const e=+r['Pemakaian Listrik (kWh)']||0, w=+r['Pemakaian Air (m3)']||0;
+    const msgs=[];
+    if(avgE&&e>avgE*(1+CFG.anomE/100)) msgs.push(`Listrik <b>${e} kWh</b> (+${((e/avgE-1)*100).toFixed(0)}% di atas rata-rata)`);
+    if(avgW&&w>avgW*(1+CFG.anomW/100)) msgs.push(`Air <b>${w} m³</b> (+${((w/avgW-1)*100).toFixed(0)}% di atas rata-rata)`);
+    return `<div class="a-item">⚠️ <b>Unit ${r['Unit']}</b> (${r['Lantai']||''}) — ${msgs.join(' | ')}</div>`;
+  }).join('');
+}
+
+// ─── ALERT TOP PANEL (lonjakan) ───
+function renderAlertTop(anoms, eArr, wArr, avgE, avgW){
+  const panel = document.getElementById('alertPanelTop');
+  if(!panel) return;
+  if(!anoms.length){ panel.style.display='none'; return; }
+
+  const crits = [], warns = [];
+  anoms.forEach((r,idx2)=>{
+    const e = eArr[idx2]||0, w = wArr[idx2]||0;
+    const eRatio = avgE ? e/avgE : 0, wRatio = avgW ? w/avgW : 0;
+    const maxRatio = Math.max(eRatio, wRatio);
+    const unit = 'Unit '+r['Unit'];
+    if(maxRatio >= 4) crits.push({unit, e, w, eRatio, wRatio});
+    else if(maxRatio >= 2.5) warns.push({unit, e, w, eRatio, wRatio});
+  });
+
+  let html = '';
+  if(crits.length){
+    html += `<div class="alert-top-crit">
+      <div class="alert-top-title">🚨 KRITIS — Lonjakan Ekstrem (≥4× rata-rata)</div>
+      ${crits.map(a=>`<div class="alert-top-item">• ${a.unit}: Listrik ${a.e} kWh (${a.eRatio.toFixed(1)}×) | Air ${a.w} m³ (${a.wRatio.toFixed(1)}×)</div>`).join('')}
+    </div>`;
+  }
+  if(warns.length){
+    html += `<div class="alert-top-warn">
+      <div class="alert-top-title">⚠️ WASPADA — Pemakaian Tinggi (≥2.5× rata-rata)</div>
+      ${warns.map(a=>`<div class="alert-top-item">• ${a.unit}: Listrik ${a.e} kWh (${a.eRatio.toFixed(1)}×) | Air ${a.w} m³ (${a.wRatio.toFixed(1)}×)</div>`).join('')}
+    </div>`;
+  }
+  panel.innerHTML = html;
+  panel.style.display = (crits.length||warns.length) ? 'block' : 'none';
+}
+
+// ─── GRAFIK HARIAN ───
+function renderDailyCharts(ten, eArr, wArr){
+  // Estimasi pemakaian harian: rata-rata per unit dibagi hari dalam bulan
+  const now = new Date();
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
+  const today = now.getDate();
+
+  // Buat array 31 hari
+  const days = Array.from({length:today}, (_,i)=>i+1);
+  // Distribusi sederhana: pemakaian per unit dibagi rata per hari
+  // Gunakan total per unit dan bagi per hari untuk estimasi
+  const totalE = eArr.reduce((s,v)=>s+v,0);
+  const totalW = wArr.reduce((s,v)=>s+v,0);
+  const dailyE = days.map(d => +(totalE/daysInMonth).toFixed(1));
+  const dailyW = days.map(d => +(totalW/daysInMonth).toFixed(2));
+
+  const mkChart = (id, label, data, color, unit) => {
+    const ctx = document.getElementById(id);
+    if(!ctx) return;
+    if(charts[id]){ charts[id].data.labels=days; charts[id].data.datasets[0].data=data; charts[id].update(); return; }
+    charts[id] = new Chart(ctx, {
+      type:'bar',
+      data:{ labels:days, datasets:[{
+        label: label,
+        data: data,
+        backgroundColor: color+'99',
+        borderColor: color,
+        borderWidth:1,
+        borderRadius:3
+      }]},
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        plugins:{legend:{display:false}},
+        scales:{
+          x:{ticks:{font:{size:9}}, grid:{display:false}},
+          y:{ticks:{font:{size:9}}, grid:{color:'rgba(255,255,255,.05)'}}
+        }
+      }
+    });
+  };
+  mkChart('cDailyE','kWh/hari', dailyE, '#f5c542', 'kWh');
+  mkChart('cDailyW','m³/hari',  dailyW, '#38bdf8', 'm³');
+}
+
+// ─── GRAFIK TREN OVERVIEW ───
+function renderTrendOverview(){
+  const ctx = document.getElementById('cTrendOverview');
+  if(!ctx) return;
+  const months = Object.keys(trenData).sort();
+  if(months.length < 2){ if(charts.trendOv){ charts.trendOv.data.labels=[]; charts.trendOv.update(); } return; }
+  const eData = months.map(m=>trenData[m].e||0);
+  const wData = months.map(m=>trenData[m].w||0);
+  const lbls  = months.map(m=>{ const p=m.split(' '); return (p[0]||m).substring(0,3)+' '+(p[1]||'').slice(-2); });
+
+  if(charts.trendOv){
+    charts.trendOv.data.labels = lbls;
+    charts.trendOv.data.datasets[0].data = eData;
+    charts.trendOv.data.datasets[1].data = wData;
+    charts.trendOv.update();
+    return;
+  }
+  charts.trendOv = new Chart(ctx, {
+    type:'line',
+    data:{ labels:lbls, datasets:[
+      { label:'Listrik (kWh)', data:eData, borderColor:'#f5c542', backgroundColor:'rgba(245,197,66,.15)',
+        tension:.4, fill:true, pointRadius:4, yAxisID:'yE' },
+      { label:'Air (m³)', data:wData, borderColor:'#38bdf8', backgroundColor:'rgba(56,189,248,.15)',
+        tension:.4, fill:true, pointRadius:4, yAxisID:'yW' }
+    ]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ labels:{boxWidth:10,font:{size:10},color:'#aaa'} } },
+      scales:{
+        yE:{ type:'linear', position:'left',  ticks:{font:{size:9},color:'#f5c542'}, grid:{color:'rgba(255,255,255,.05)'} },
+        yW:{ type:'linear', position:'right', ticks:{font:{size:9},color:'#38bdf8'}, grid:{display:false} },
+        x:{ ticks:{font:{size:9}}, grid:{display:false} }
+      }
+    }
+  });
+}
+
+
+// ═══════════════════════════════════════════════════
+// FLOOR DATA
+// ═══════════════════════════════════════════════════
+function renderFloorData(ten,eArr,wArr){
+  const fe={},fw={},fc={};
+  FLOORS.forEach(f=>{fe[f]=0;fw[f]=0;fc[f]=0;});
+  ten.forEach((r,i)=>{ const f=r['Lantai']; if(fe[f]!==undefined){fe[f]+=eArr[i];fw[f]+=wArr[i];fc[f]++;} });
+
+  renderFloorKpi(FLOORS.map(f=>({floor:f,e:fe[f],w:fw[f],n:fc[f]})));
+
+  if(charts.flE){ charts.flE.data.labels=FLOORS; charts.flE.data.datasets[0].data=FLOORS.map(f=>fe[f]); charts.flE.update(); }
+  if(charts.flW){ charts.flW.data.labels=FLOORS; charts.flW.data.datasets[0].data=FLOORS.map(f=>fw[f]); charts.flW.update(); }
+
+  renderProg('flElecProg', FLOORS, FLOORS.map(f=>({v:fe[f],max:CFG.tgtE*(fc[f]||1)})), 'kWh');
+  renderProg('flWaterProg', FLOORS, FLOORS.map(f=>({v:fw[f],max:CFG.tgtW*(fc[f]||1)})), 'm³');
+}
+
+function renderFloorKpi(data){
+  const el=document.getElementById('floorKpi'); if(!el) return;
+  if(!data.length||!data.some(d=>d.e>0)){
+    el.innerHTML='<div style="color:var(--muted);font-size:.8rem;padding:6px;">Belum ada data. Input pemakaian unit terlebih dahulu.</div>';
+    return;
+  }
+  el.innerHTML=data.map(d=>`
+    <div class="kpi" style="border-left:3px solid var(--elec);">
+      <div class="kl">${d.floor}</div>
+      <div class="kv" style="font-size:1.15rem;color:var(--elec)">${(d.e||0).toLocaleString('id-ID')}</div>
+      <div class="ku">kWh | ${d.w||0} m³</div>
+      <div class="kc neu">${d.n} unit aktif</div>
+    </div>`).join('');
+}
+
+function renderProg(id,labels,data,unit){
+  const el=document.getElementById(id); if(!el) return;
+  el.innerHTML=data.map((d,i)=>{
+    const pct=d.max?Math.min((d.v/d.max)*100,200):0;
+    const c=pct>100?'var(--red)':pct>80?'var(--elec)':'var(--green)';
+    const cls=pct>100?'over':pct>80?'warn':'ok';
+    return `<div class="pr">
+      <div class="prl">${labels[i]}</div>
+      <div class="prb"><div class="prf" style="width:${Math.min(pct,100).toFixed(0)}%;background:${c}"></div></div>
+      <div class="prv" style="color:${c}">${Math.round(pct)}%</div>
+    </div>
+    <div style="font-size:.68rem;color:var(--muted);padding-left:98px;margin-bottom:6px;">${d.v} / ${d.max} ${unit}</div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════
+// TREN
+// ═══════════════════════════════════════════════════
+function renderTren(m12){
+  const eD=m12.map(m=>(trenData[m]||{e:0}).e);
+  const wD=m12.map(m=>(trenData[m]||{w:0}).w);
+  // Gunakan calcTagihanTenantListrik (dengan minimum lantai) + calcTagihanTenantAir
+  // Untuk tren overview, gunakan estimasi rata-rata (tidak ada info lantai per bulan)
+  const cD=m12.map(m=>{
+    const e=(trenData[m]||{e:0}).e;
+    const w=(trenData[m]||{w:0}).w;
+    if(!e && !w) return 0;
+    return +((calcTagihanTenantListrik(e)+calcTagihanTenantAir(w))/1e6).toFixed(2);
+  });
+  const lbl=m12.map(m=>m.split(' ')[0]+'\''+m.split(' ')[1].slice(2));
+
+  // Filter out months with no data at all for cleaner chart
+  const hasData = m12.map((_,i)=>eD[i]>0||wD[i]>0);
+  const lblF = lbl.filter((_,i)=>hasData[i]);
+  const eDF  = eD.filter((_,i)=>hasData[i]);
+  const wDF  = wD.filter((_,i)=>hasData[i]);
+  const cDF  = cD.filter((_,i)=>hasData[i]);
+
+  const nzE=eD.filter(v=>v>0), nzW=wD.filter(v=>v>0);
+  setText('t-ea',nzE.length?Math.round(nzE.reduce((a,b)=>a+b)/nzE.length).toLocaleString('id-ID'):'—');
+  setText('t-wa',nzW.length?Math.round(nzW.reduce((a,b)=>a+b)/nzW.length).toLocaleString('id-ID'):'—');
+  // Peak dari rekening gedung (PLN/PAM)
+  const plnKwhD = m12.map(m=>(trenData[m]||{}).plnKwh||0);
+  const pamM3D  = m12.map(m=>(trenData[m]||{}).pamM3 ||0);
+  // Peak listrik rekening PLN
+  const pEi  = plnKwhD.reduce((bi,v,i)=>v>plnKwhD[bi]?i:bi, 0);
+  setText('t-ep',  plnKwhD[pEi] ? plnKwhD[pEi].toLocaleString('id-ID') : '—');
+  setText('t-epm', plnKwhD[pEi] ? m12[pEi] : '(belum ada data rekening)');
+  // Peak listrik meter tenant
+  const pEi2 = eD.reduce((bi,v,i)=>v>eD[bi]?i:bi, 0);
+  setText('t-ep2',  eD[pEi2] ? eD[pEi2].toLocaleString('id-ID') : '—');
+  setText('t-epm2', eD[pEi2] ? m12[pEi2] : '—');
+  // Peak air rekening PAM
+  const pWi  = pamM3D.reduce((bi,v,i)=>v>pamM3D[bi]?i:bi, 0);
+  setText('t-wp',  pamM3D[pWi] ? pamM3D[pWi].toLocaleString('id-ID') : '—');
+  setText('t-wpm', pamM3D[pWi] ? m12[pWi] : '(belum ada data rekening)');
+  // Peak air meter tenant
+  const pWi2 = wD.reduce((bi,v,i)=>v>wD[bi]?i:bi, 0);
+  setText('t-wp2',  wD[pWi2] ? wD[pWi2].toLocaleString('id-ID') : '—');
+  setText('t-wpm2', wD[pWi2] ? m12[pWi2] : '—');
+
+  // Data gedung dari rekening PLN/PAM
+  const plnKwhTren = m12.map(m=>(trenData[m]||{}).plnKwh||0);
+  const pamM3Tren  = m12.map(m=>(trenData[m]||{}).pamM3 ||0);
+
+  if(charts.trE){
+    charts.trE.data.labels = lblF.length ? lblF : lbl;
+    charts.trE.data.datasets[0].data = lblF.length ? eDF : eD;   // tenant (filtered)
+    // PLN gedung — filter same way
+    const plnF = plnKwhTren.filter((_,i)=>hasData[i]);
+    charts.trE.data.datasets[1].data = lblF.length ? plnF : plnKwhTren;
+    charts.trE.data.datasets[1].label = 'kWh PLN Gedung';
+    charts.trE.update();
+  }
+  if(charts.trW){
+    charts.trW.data.labels = lblF.length ? lblF : lbl;
+    charts.trW.data.datasets[0].data = lblF.length ? wDF : wD;   // tenant (filtered)
+    const pamF = pamM3Tren.filter((_,i)=>hasData[i]);
+    charts.trW.data.datasets[1].data = lblF.length ? pamF : pamM3Tren;
+    charts.trW.data.datasets[1].label = 'm³ PAM Gedung';
+    charts.trW.update();
+  }
+  if(charts.trC){ charts.trC.data.labels=lbl; charts.trC.data.datasets[0].data=cD; charts.trC.update(); }
+}
+
+// ═══════════════════════════════════════════════════
+// CHARTS
+// ═══════════════════════════════════════════════════
+Chart.defaults.color='#64748b'; Chart.defaults.borderColor='#1e2d42'; Chart.defaults.font.family='Mulish';
+
+function mkBarChart(id,lbl,showLines=false){
+  const ctx=document.getElementById(id); if(!ctx) return null;
+  const ds=[{label:lbl,data:[],backgroundColor:[],borderColor:[],borderWidth:1,borderRadius:3}];
+  if(showLines){
+    ds.push({label:'Rata-rata',data:[],type:'line',borderColor:'#f59e0b',borderDash:[4,4],pointRadius:0,borderWidth:1.5,fill:false,yAxisID:'y'});
+    ds.push({label:'Target',data:[],type:'line',borderColor:'#ef4444',borderDash:[2,3],pointRadius:0,borderWidth:1.5,fill:false,yAxisID:'y'});
+  }
+  return new Chart(ctx,{ type:'bar', data:{labels:[],datasets:ds},
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:showLines,labels:{boxWidth:9,font:{size:9}}}},
+      scales:{ x:{grid:{display:false},ticks:{maxTicksLimit:14,font:{size:8}}}, y:{grid:{color:'#1a2535'}} }
+    }
+  });
+}
+
+function mkLineChart(id,lbl,color){
+  const ctx=document.getElementById(id); if(!ctx) return null;
+  return new Chart(ctx,{ type:'line',
+    data:{labels:[],datasets:[
+      {label:lbl,         data:[],borderColor:color, backgroundColor:color+'22',tension:.4,fill:true, pointRadius:3,pointBackgroundColor:color, borderWidth:2},
+      {label:lbl+' Gedung',data:[],borderColor:'#ffffff', backgroundColor:'rgba(255,255,255,.06)',tension:.4,fill:false,pointRadius:3,pointBackgroundColor:'#ffffff',borderWidth:1.5,borderDash:[5,3]}
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{labels:{boxWidth:10,font:{size:9},color:'#94a3b8'}}},
+      scales:{x:{grid:{color:'#1a2535'},ticks:{font:{size:9}}},y:{grid:{color:'#1a2535'},ticks:{font:{size:9}}}}
+    }
+  });
+}
+
+function initCharts(){
+  charts.elecBar  = mkBarChart('cElecBar','Listrik (kWh)');
+  charts.waterBar = mkBarChart('cWaterBar','Air (m³)');
+  charts.elecUnit = mkBarChart('cElecUnit','Listrik (kWh)',true);
+  charts.waterUnit= mkBarChart('cWaterUnit','Air (m³)',true);
+
+  const ctx=document.getElementById('cElecCmp'); if(ctx)
+  charts.elecCmp=new Chart(ctx,{ type:'bar', data:{labels:[],datasets:[
+    {label:'Bulan Ini',data:[],backgroundColor:'rgba(245,158,11,.65)',borderRadius:3},
+    {label:'Bulan Lalu',data:[],backgroundColor:'rgba(245,158,11,.2)',borderRadius:3}
+  ]}, options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{boxWidth:9,font:{size:9}}}},scales:{x:{grid:{display:false},ticks:{maxTicksLimit:14,font:{size:8}}},y:{grid:{color:'#1a2535'}}}}});
+
+  const mkFloor=(id,lbl,color)=>{ const c=document.getElementById(id); if(!c) return null;
+    return new Chart(c,{type:'bar',data:{labels:[],datasets:[{label:lbl,data:[],backgroundColor:color,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{grid:{color:'#1a2535'}}}}});
+  };
+  charts.flE=mkFloor('cFlE','kWh','rgba(245,158,11,.65)');
+  charts.flW=mkFloor('cFlW','m³','rgba(6,182,212,.65)');
+
+  const cp=document.getElementById('cPie'); if(cp)
+  charts.pie=new Chart(cp,{type:'doughnut',data:{labels:['Tenant','Common Area'],datasets:[{data:[70,30],backgroundColor:['rgba(245,158,11,.8)','rgba(245,158,11,.22)'],borderColor:['#f59e0b','#f59e0b'],borderWidth:1}]},options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{position:'bottom',labels:{boxWidth:9,padding:8,font:{size:9}}}}}});
+
+  charts.trE=mkLineChart('cTrE','Total kWh','#f59e0b');
+  charts.trW=mkLineChart('cTrW','Total m³','#06b6d4');
+  const ctc=document.getElementById('cTrC'); if(ctc)
+  charts.trC=new Chart(ctc,{type:'bar',data:{labels:[],datasets:[{label:'Tagihan (Juta Rp)',data:[],backgroundColor:'rgba(168,85,247,.65)',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{grid:{color:'#1a2535'}}}}});
+}
+
+function updBarChart(chart,labels,data,avg,target,type,showLines=false){
+  if(!chart) return;
+  const solid=type==='w'?'#06b6d4':'#f59e0b';
+  const alpha=type==='w'?'rgba(6,182,212,':'rgba(245,158,11,';
+  chart.data.labels=labels;
+  chart.data.datasets[0].data=data;
+  chart.data.datasets[0].backgroundColor=data.map(v=>v>target?'rgba(239,68,68,.7)':alpha+'.6)');
+  chart.data.datasets[0].borderColor=data.map(v=>v>target?'#ef4444':solid);
+  if(showLines&&chart.data.datasets[1]){
+    chart.data.datasets[1].data=Array(data.length).fill(Math.round(avg));
+    chart.data.datasets[2].data=Array(data.length).fill(target);
+  }
+  chart.update();
+}
+
+// ═══════════════════════════════════════════════════
+// COMMON AREA BARS
+// ═══════════════════════════════════════════════════
+const CA=[
+  {n:'Pompa Air & Tandon',v:980,t:'e'},{n:'Lift',v:720,t:'e'},
+  {n:'Koridor & Tangga',v:640,t:'e'},{n:'AC Lobby',v:480,t:'e'},
+  {n:'Air Taman',v:210,t:'w'},{n:'CCTV & Keamanan',v:320,t:'e'},
+  {n:'Car Wash',v:98,t:'w'},{n:'Changing Room',v:65,t:'w'},
+  {n:'Toilet Umum',v:130,t:'w'},{n:'Lainnya',v:190,t:'e'},
+];
+function renderCaBars(){
+  const el=document.getElementById('caBars'); if(!el) return;
+  const max=Math.max(...CA.map(c=>c.v));
+  el.innerHTML=CA.map(c=>{
+    const pct=(c.v/max*100).toFixed(0);
+    const color=c.t==='w'?'#06b6d4':c.v>600?'#ef4444':'#f59e0b';
+    const unit=c.t==='w'?'m³':'kWh';
+    return `<div class="fbr"><div class="fbl" style="font-size:.69rem;">${c.n}</div><div class="fbt"><div class="fbf" style="width:${pct}%;background:${color}"></div></div><div class="fbv">${c.v} ${unit}</div></div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════
+// LEAK
+// ═══════════════════════════════════════════════════
+function renderLeakDefault(){
+  renderLeakTable([
+    {loc:'Shaft Lt 3-4',val:0.42,date:'Dari data default'},
+    {loc:'Tandon Atas',val:0.08,date:'Dari data default'},
+    {loc:'Toilet Umum Lt 1',val:0.35,date:'Dari data default'},
+    {loc:'Pompa Basement',val:0.05,date:'Dari data default'},
+    {loc:'Taman Depan',val:0.12,date:'Dari data default'},
+    {loc:'Car Wash',val:0.07,date:'Dari data default'},
+  ]);
+}
+function renderLeakFromSheets(data){
+  if(!data.length){renderLeakDefault();return;}
+  const items=data.map(r=>({loc:r['Lokasi'],val:+r['Bacaan (m3/jam)']||0,date:r['Tanggal']||'—'}));
+  renderLeakTable(items);
+  setText('a-leak',items.filter(r=>r.val>0.1).length);
+}
+function renderLeakTable(items){
+  document.getElementById('leakBody').innerHTML=items.map(r=>`<tr>
+    <td style="color:var(--text)">${r.loc}</td>
+    <td>${r.val} m³/jam</td><td>≤ 0.1 m³/jam</td>
+    <td class="${r.val>.1?'hr':'hg'}">${r.val>.1?'+'+(r.val-.1).toFixed(2)+' m³':'Normal'}</td>
+    <td><span class="badge ${r.val>.1?'bbr':'bbg'}">${r.val>.1?'⚠ Cek Segera':'✅ Normal'}</span></td>
+    <td>${r.date}</td>
+  </tr>`).join('');
+}
+
+// ═══════════════════════════════════════════════════
+// UNIT TABLE
+// ═══════════════════════════════════════════════════
+function renderUnitTable(data,eArr,wArr,avgE,avgW){
+  const tb=document.getElementById('unitBody'), em=document.getElementById('unitEmpty');
+  if(!data.length){tb.innerHTML='';em.style.display='block';return;}
+  em.style.display='none';
+  tb.innerHTML=data.map((r,i)=>{
+    const e=eArr[i],w=wArr[i];
+    const ep=avgE?((e-avgE)/avgE*100).toFixed(0):0;
+    const wp=avgW?((w-avgW)/avgW*100).toFixed(0):0;
+    const etp=((e-CFG.tgtE)/CFG.tgtE*100).toFixed(0);
+    const wtp=((w-CFG.tgtW)/CFG.tgtW*100).toFixed(0);
+    const anom=e>avgE*(1+CFG.anomE/100)||w>avgW*(1+CFG.anomW/100);
+    const overE=e>CFG.tgtE, overW=w>CFG.tgtW;
+    return `<tr>
+      <td style="font-weight:600;color:var(--text)">Unit ${r['Unit']}</td>
+      <td>${r['Lantai']||'—'}</td><td>${r['Tipe']||'—'}</td>
+      <td class="${overE?'hr':'he'}">${e}</td>
+      <td class="${+ep>50?'hr':+ep>20?'':''}">${ep>0?'+':''}${ep}%</td>
+      <td class="${overE?'hr':'hg'}">${etp>0?'+':''}${etp}%</td>
+      <td class="${overW?'hr':'hw'}">${w}</td>
+      <td class="${+wp>50?'hr':''}">${wp>0?'+':''}${wp}%</td>
+      <td class="${overW?'hr':'hg'}">${wtp>0?'+':''}${wtp}%</td>
+      <td>${r['Bulan']||'—'}</td>
+      <td>${anom?'<span class="badge bbr">⚠ Anomali</span>':overE||overW?'<span class="badge bby">↑ Target</span>':'<span class="badge bbg">✅ OK</span>'}</td>
+    </tr>`;
+  }).join('');
+}
+
+let activeFloorFilter = 'semua';
+
+function setFloorFilter(floor, btn){
+  activeFloorFilter = floor;
+  document.querySelectorAll('.floor-btn').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  applyUnitFilter();
+}
+
+function filterUnit(q){
+  document.getElementById('unitSearchInput').value = q;
+  applyUnitFilter();
+}
+
+function applyUnitFilter(){
+  const q = (document.getElementById('unitSearchInput')?.value||'').toLowerCase();
+  document.querySelectorAll('#unitBody tr').forEach(tr=>{
+    const text = tr.textContent.toLowerCase();
+    const matchQ = !q || text.includes(q);
+    // Get lantai from 2nd cell
+    const cells = tr.querySelectorAll('td');
+    const lantai = cells[1]?.textContent?.trim() || '';
+    // Support format: 'Lantai 2', '2', atau deteksi dari nomor unit (502=lantai 5)
+    const unitNum = (cells[0]?.textContent||'').replace('Unit','').trim();
+    const lantaiFromUnit = unitNum.length>=3 ? 'Lantai '+unitNum[0] : '';
+    const matchF = activeFloorFilter==='semua'
+      || lantai===activeFloorFilter
+      || ('Lantai '+lantai)===activeFloorFilter
+      || lantaiFromUnit===activeFloorFilter;
+    tr.style.display = (matchQ && matchF) ? '' : 'none';
+  });
+}
+function su(col){
+  sortDir[col]=!sortDir[col];
+  const rows=[...document.querySelectorAll('#unitBody tr')];
+  rows.sort((a,b)=>{ const av=a.cells[col]?.textContent.trim()||'',bv=b.cells[col]?.textContent.trim()||''; const n=v=>parseFloat(v.replace(/[^0-9.-]/g,'')); const d=isNaN(n(av))?av.localeCompare(bv):n(av)-n(bv); return sortDir[col]?-d:d; });
+  const tb=document.getElementById('unitBody'); rows.forEach(r=>tb.appendChild(r));
+}
+
+// ═══════════════════════════════════════════════════
+// SAVE FUNCTIONS
+// ═══════════════════════════════════════════════════
+async function saveUnit(){
+  const unit=gv('i-unit'),floor=gv('i-floor'),type=gv('i-type'),month=gv('i-month');
+  const ea=+gv('i-ea'),eb=+gv('i-eb'),wa=+gv('i-wa'),wb=+gv('i-wb');
+  const by=gv('i-by'),note=gv('i-note');
+  if(!unit){toast('❌ Nomor unit wajib diisi','err');return;}
+  if(eb<ea){toast('❌ Meter akhir listrik < meter awal','err');return;}
+  if(wb<wa){toast('❌ Meter akhir air < meter awal','err');return;}
+  load('ut','us',true);
+  try{
+    await post2('Utilitas_Unit',
+      ['Timestamp','Unit','Lantai','Tipe','Bulan','Listrik Awal','Listrik Akhir','Pemakaian Listrik (kWh)','Air Awal','Air Akhir','Pemakaian Air (m3)','Dicatat Oleh','Catatan'],
+      [now(),unit,floor,type,month,ea,eb,eb-ea,wa,wb,wb-wa,by,note]);
+    msg('ok-u'); clearUnit();
+    toast(`✅ Unit ${unit} (${month}) terkirim ke Google Sheets!`,'ok');
+    setTimeout(doRefresh,2000);
+  } catch(err){ console.error('saveUnit error:',err); msg('err-u'); toast('❌ '+err.message,'err'); }
+  load('ut','us',false);
+}
+
+async function saveCommon(){
+  const area=gv('i-area'),util=gv('i-util'),month=gv('i-ca-month');
+  const a=+gv('i-ca-a'),b=+gv('i-ca-b'),by=gv('i-ca-by'),note=gv('i-ca-note');
+  if(b<a){toast('❌ Meter akhir < meter awal','err');return;}
+  load('ct2','cs2',true);
+  try{
+    await post2('Utilitas_CommonArea',
+      ['Timestamp','Area','Jenis','Bulan','Meter Awal','Meter Akhir','Pemakaian','Satuan','Dicatat Oleh','Catatan'],
+      [now(),area,util,month,a,b,b-a,util.includes('Listrik')?'kWh':'m3',by,note]);
+    msg('ok-c'); clearCommon();
+    toast(`✅ ${area} tersimpan!`,'ok');
+  } catch(err){ msg('err-c'); toast('❌ '+err.message,'err'); }
+  load('ct2','cs2',false);
+}
+
+async function saveLeak(){
+  const loc=gv('i-lk-loc'),val=+gv('i-lk-val'),date=gv('i-lk-date'),by=gv('i-lk-by');
+  if(!loc){toast('❌ Lokasi wajib diisi','err');return;}
+  load('lt2','ls2',true);
+  try{
+    const status=val>.1?'⚠ Cek Segera':'✅ Normal';
+    await post2('Kebocoran',
+      ['Timestamp','Tanggal','Lokasi','Bacaan (m3/jam)','Batas','Status','Dicatat Oleh'],
+      [now(),date,loc,val,0.1,status,by]);
+    msg('ok-l');
+    toast(val>.1?`⚠️ PERHATIAN: ${loc} indikasi kebocoran! Tersimpan.`:`✅ ${loc} normal. Tersimpan.`, val>.1?'err':'ok');
+    setTimeout(doRefresh,1000);
+  } catch(err){ msg('err-l'); toast('❌ '+err.message,'err'); }
+  load('lt2','ls2',false);
+}
+
+// ═══════════════════════════════════════════════════
+// RIWAYAT
+// ═══════════════════════════════════════════════════
+async function loadRiwayat(sheet){
+  const ld=document.getElementById('rwLoad'),tb=document.getElementById('rwTable'),em=document.getElementById('rwEmpty');
+  ld.style.display='block'; tb.style.display='none'; em.style.display='none';
+  try{
+    const data=await getSheet(sheet);
+    ld.style.display='none';
+    if(!data.length){em.style.display='block';return;}
+    const keys=Object.keys(data[0]);
+    document.getElementById('rwHead').innerHTML=keys.map(k=>`<th>${k}</th>`).join('');
+    document.getElementById('rwBody').innerHTML=[...data].reverse().slice(0,100).map(r=>`<tr>${keys.map(k=>{
+      let v=r[k]; const kl=k.toLowerCase();
+      const cls=kl.includes('kwh')?'he':kl.includes('m3')?'hw':String(v).includes('⚠')?'hr':'';
+      // Format numbers: integers as-is, floats to 2 decimal
+      if(typeof v==='number'){
+        v = Number.isInteger(v) ? v.toLocaleString('id-ID')
+          : (Math.round(v*100)/100).toLocaleString('id-ID',{minimumFractionDigits:2,maximumFractionDigits:2});
+      } else { v = v||''; }
+      return `<td class="${cls}">${v}</td>`;
+    }).join('')}</tr>`).join('');
+    tb.style.display='table';
+  } catch{ ld.style.display='none'; em.style.display='block'; }
+}
+
+// ═══════════════════════════════════════════════════
+// PDF & CSV
+// ═══════════════════════════════════════════════════
+function cetakPDF(){
+  const month = gv('monthSel');
+  document.title = 'Laporan Utilitas Menteng Regency — ' + month;
+  // Switch ke tab overview sebelum print
+  const overviewBtn = document.querySelector('.tabs .tab:first-child');
+  if(overviewBtn) sw('overview', overviewBtn, 'ag');
+  setTimeout(()=>{
+    window.print();
+    document.title = 'Dashboard Monitoring Energy — Menteng Regency';
+  }, 400);
+}
+
+function exportCSV(){
+  const rows=[...document.querySelectorAll('#unitBody tr')];
+  if(!rows.length){toast('❌ Belum ada data untuk diekspor','err');return;}
+  const h='Unit,Lantai,Tipe,Listrik(kWh),vsRata2%,vsTarget%,Air(m3),vsRata2%,vsTarget%,Bulan,Status\n';
+  const csv=h+rows.map(r=>[...r.cells].map(c=>c.textContent.trim().replace(/,/g,' ')).join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download=`utilitas-menteng-regency-${gv('monthSel').replace(' ','-')}.csv`;
+  a.click(); toast('✅ CSV diunduh!','ok');
+}
+
+// ═══════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════
+const gv=id=>document.getElementById(id)?.value||'';
+const setVal=(id,v)=>{ const el=document.getElementById(id); if(el) el.value=v; };
+const setText=(id,v)=>{ const el=document.getElementById(id); if(el) el.textContent=v; };
+const now=()=>new Date().toLocaleString('id-ID');
+function load(tid,sid,on){ document.getElementById(tid).style.opacity=on?.5:1; document.getElementById(sid).style.display=on?'inline-block':'none'; }
+function msg(id){ const el=document.getElementById(id); el.style.display='inline'; setTimeout(()=>el.style.display='none',4000); }
+function clearUnit(){ ['i-unit','i-ea','i-eb','i-wa','i-wb','i-by','i-note'].forEach(id=>setVal(id,'')); }
+function clearCommon(){ ['i-ca-a','i-ca-b','i-ca-by','i-ca-note'].forEach(id=>setVal(id,'')); }
+
+let tTimer;
+function toast(m,t='ok'){ const el=document.getElementById('toast'); el.textContent=m; el.className='show '+t; clearTimeout(tTimer); tTimer=setTimeout(()=>el.className='',3500); }
+
+function sw(name,btn,cls){
+  document.querySelectorAll('.tp').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(b=>b.className='tab');
+  document.getElementById('tab-'+name).classList.add('active');
+  btn.classList.add(cls);
+  if(name==='riwayat') loadRiwayat(document.getElementById('sheetSel').value);
+  if(name==='tagihan'){
+    const m = gv('monthSel');
+    renderTagihan(m);
+    loadTagihanHistory();
+  }
+  setTimeout(()=>Object.values(charts).forEach(c=>c?.resize()),60);
+}
+
+// ═══════════════════════════════════════════════════
+// TAGIHAN PLN & PAM
+// ═══════════════════════════════════════════════════
+
+// State for tagihan
+let tagihanData = {}; // keyed by month
+
+async function saveTagihan(){
+  const month = gv('tg-month');
+  const pln   = +gv('tg-pln');
+  const plnKwh= +gv('tg-pln-kwh');
+  const pam   = +gv('tg-pam');
+  const pamM3 = +gv('tg-pam-m3');
+  const plnNo = gv('tg-pln-no');
+  const pamNo = gv('tg-pam-no');
+  const by    = gv('tg-by');
+
+  if(!pln && !pam){ toast('❌ Masukkan minimal tagihan PLN atau PAM','err'); return; }
+
+  load('tgt','tgs',true);
+  try{
+    await post2('Tagihan_Gedung',
+      ['Timestamp','Bulan','Tagihan PLN (Rp)','kWh PLN','Tagihan PAM (Rp)','m3 PAM','No Rek PLN','No Rek PAM','Dicatat Oleh'],
+      [now(), month, pln, plnKwh, pam, pamM3, plnNo, pamNo, by]
+    );
+    // store locally for immediate update
+    tagihanData[month] = { pln, plnKwh, pam, pamM3 };
+    msg('ok-tg'); clearTagihan();
+    toast(`✅ Tagihan ${month} tersimpan!`, 'ok');
+    renderTagihan(month);
+    loadTagihanHistory();
+  } catch(err){ msg('err-tg'); toast('❌ '+err.message,'err'); }
+  load('tgt','tgs',false);
+}
+
+function clearTagihan(){
+  ['tg-pln','tg-pln-kwh','tg-pam','tg-pam-m3','tg-pln-no','tg-pam-no','tg-by'].forEach(id=>setVal(id,''));
+}
+
+function renderTagihan(month){
+  if(!month) month = gv('monthSel');
+  setText('tg-bulan-label', month);
+  // Sync tg-month select value
+  const tgMonthEl = document.getElementById('tg-month');
+  if(tgMonthEl){
+    // Make sure option exists
+    const opt = [...tgMonthEl.options].find(o=>o.value===month);
+    if(opt) tgMonthEl.value = month;
+  }
+
+  const tg = tagihanData[month] || {};
+  const plnRp  = tg.pln    || 0;
+  const plnKwh = tg.plnKwh || 0;
+  const pamRp  = tg.pam    || 0;
+  const pamM3  = tg.pamM3  || 0;
+
+  // Tenant totals from unitData
+  const ten = unitData.filter(r=>r['Tipe']!=='Kosong');
+  const tenEkwh = ten.reduce((s,r)=>s+(+r['Pemakaian Listrik (kWh)']||0),0);
+  const tenWm3  = ten.reduce((s,r)=>s+(+r['Pemakaian Air (m3)']||0),0);
+  // Hitung per unit dengan minimum kWh berdasarkan lantai
+  const tenERp = unitData.reduce((sum, r) => {
+    const kwh    = +r['Pemakaian Listrik (kWh)'] || 0;
+    const lantai = r['Lantai'] || r['Unit'] || '';
+    return sum + calcTagihanTenantListrik(kwh, lantai);
+  }, 0);
+  // tagihan ke tenant pakai tarif tenant + minimum lantai
+  const tenWRp  = calcTagihanTenantAir(tenWm3); // tagihan ke tenant pakai tarif tenant
+
+  // Common area = Gedung − Tenant
+  const caERp = Math.max(plnRp - tenERp, 0);
+  const caWRp = Math.max(pamRp - tenWRp, 0);
+  const caEkwh= Math.max(plnKwh - tenEkwh, 0);
+  const caWm3 = Math.max(pamM3 - tenWm3, 0);
+
+  // Selisih = Tagihan Gedung − Tagihan Tenant
+  const diffERp = plnRp - tenERp;   // positif = gedung masih tanggung, negatif = tenant lebih bayar
+  const diffWRp = pamRp - tenWRp;
+
+  const fmtRp = v => {
+    const abs = Math.abs(Math.round(v));
+    if(abs >= 1000000) return 'Rp ' + (abs/1000000).toFixed(3).replace('.',',') + ' Jt';
+    return 'Rp ' + abs.toLocaleString('id-ID');
+  };
+
+  // KPI
+  const jt = v => v >= 1000000 ? 'Rp '+(v/1000000).toFixed(3).replace('.',',')+' Jt' : 'Rp '+Math.round(v).toLocaleString('id-ID');
+  setText('tg-k-pln',     plnRp  ? jt(plnRp)  : '—');
+  setText('tg-k-pln-kwh', plnKwh ? plnKwh.toLocaleString('id-ID')+' kWh'            : '—');
+  setText('tg-k-pam',     pamRp  ? jt(pamRp)  : '—');
+  setText('tg-k-pam-m3',  pamM3  ? pamM3.toLocaleString('id-ID')+' m³' : '—');
+  setText('tg-k-ten-e',   tenERp ? jt(tenERp) : '—');
+  setText('tg-k-ten-w',   tenWRp ? jt(tenWRp) : '—');
+
+  const diffEEl = document.getElementById('tg-k-diff-e');
+  const diffWEl = document.getElementById('tg-k-diff-w');
+
+  if(plnRp){
+    diffEEl.textContent = (diffERp >= 0 ? '' : '− ') + fmtRp(diffERp) + (diffERp >= 0 ? ' (ditanggung gedung)' : ' (tenant over)');
+    diffEEl.style.color = diffERp > 0 ? 'var(--red)' : 'var(--green)';
+    setText('tg-k-diff-e-u', diffERp > 0
+      ? 'Selisih ditanggung gedung / common area'
+      : '✅ Tenant over — sisa Rp '+Math.abs(Math.round(diffERp)).toLocaleString('id-ID'));
+  } else { diffEEl.textContent = '—'; }
+
+  if(pamRp){
+    diffWEl.textContent = (diffWRp >= 0 ? '' : '− ') + fmtRp(diffWRp) + (diffWRp >= 0 ? ' (ditanggung gedung)' : ' (tenant over)');
+    diffWEl.style.color = diffWRp > 0 ? 'var(--red)' : 'var(--green)';
+    setText('tg-k-diff-w-u', diffWRp > 0
+      ? 'Selisih ditanggung gedung / common area'
+      : '✅ Tenant over — sisa Rp '+Math.abs(Math.round(diffWRp)).toLocaleString('id-ID'));
+  } else { diffWEl.textContent = '—'; }
+
+  // Breakdown table
+  const rows = [
+    ['🏢 Total Gedung (Rekening Resmi)',
+      plnRp?plnKwh.toLocaleString('id-ID')+' kWh Rp '+plnRp.toLocaleString('id-ID'):'-',
+      pamRp?pamM3.toLocaleString('id-ID')+' m³ Rp '+pamRp.toLocaleString('id-ID'):'-',
+      '100%','Nilai total rekening PLN & PAM'],
+    ['🏠 Tenant (dari meter unit)',
+      tenEkwh.toLocaleString('id-ID')+' kWh '+fmtRp(tenERp),
+      tenWm3.toLocaleString('id-ID')+' m³ '+fmtRp(tenWRp),
+      plnRp?((tenERp/plnRp)*100).toFixed(1)+'% listrik':'-',
+      'Dihitung dari bacaan meter per unit'],
+    ['🏗 Common Area (Pompa, Lift, Taman, dll.)',
+      caEkwh.toLocaleString('id-ID')+' kWh '+fmtRp(caERp),
+      caWm3.toLocaleString('id-ID')+' m³ '+fmtRp(caWRp),
+      plnRp?((caERp/plnRp)*100).toFixed(1)+'% listrik':'-',
+      'Selisih gedung − tenant'],
+    ['⚡ Selisih / Susut (losses)',
+      plnRp&&plnKwh ? (plnKwh-tenEkwh-caEkwh)+' kWh' : '-',
+      pamRp&&pamM3  ? (pamM3-tenWm3-caWm3)+' m³' : '-',
+      '-','Kebocoran, pengukuran, atau data belum lengkap'],
+  ];
+
+  document.getElementById('tagihanBody').innerHTML = rows.map((r,i)=>`<tr style="${i===3?'opacity:.6':''}">
+    <td style="font-weight:600;color:var(--text);white-space:normal;">${r[0]}</td>
+    <td class="he" style="white-space:pre-line;">${r[1]}</td>
+    <td class="hw" style="white-space:pre-line;">${r[2]}</td>
+    <td style="font-weight:600;color:var(--muted2)">${r[3]}</td>
+    <td style="color:var(--muted);font-size:.76rem;white-space:normal;">${r[4]}</td>
+  </tr>`).join('');
+
+  // Update bar charts
+  if(charts.tgElec){
+    charts.tgElec.data.datasets[0].data = [plnRp/1e6, tenERp/1e6, caERp/1e6];
+    charts.tgElec.update();
+  }
+  if(charts.tgWater){
+    charts.tgWater.data.datasets[0].data = [pamRp/1e6, tenWRp/1e6, caWRp/1e6];
+    charts.tgWater.update();
+  }
+}
+
+async function loadTagihanHistory(){
+  const ld=document.getElementById('tgHistLoad'),tb=document.getElementById('tgHistTable'),em=document.getElementById('tgHistEmpty');
+  ld.style.display='block'; tb.style.display='none'; em.style.display='none';
+  try{
+    const data=await getSheet('Tagihan_Gedung');
+    ld.style.display='none';
+    if(!data.length){em.style.display='block'; return;}
+
+    // Also populate tagihanData cache & build tren
+    data.forEach(r=>{
+      const m=r['Bulan'];
+      if(m) tagihanData[m]={ pln:+r['Tagihan PLN (Rp)']||0, plnKwh:+r['kWh PLN']||0, pam:+r['Tagihan PAM (Rp)']||0, pamM3:+r['m3 PAM']||0 };
+    });
+    renderTagihanTren(data);
+
+    const keys=Object.keys(data[0]);
+    document.getElementById('tgHistHead').innerHTML=keys.map(k=>`<th>${k}</th>`).join('');
+    document.getElementById('tgHistBody').innerHTML=[...data].reverse().map(r=>`<tr>${keys.map(k=>{
+      const v=r[k]||''; const kl=k.toLowerCase();
+      // Hanya kolom tagihan (Rp) yang dapat prefix Rp, bukan kWh/m³/no rek
+      const isRp   = kl.includes('tagihan') || kl.includes('(rp)');
+      const isKwh  = kl.includes('kwh');
+      const isM3   = kl === 'm3 pam';
+      const isNoRek= kl.includes('no rek') || kl.includes('rek');
+      const cls    = isRp ? (kl.includes('pln')||kl.includes('pam') ? (kl.includes('pln')?'he':'hw') : '') : '';
+      let display  = v;
+      if(typeof v === 'number'){
+        if(isRp)    display = 'Rp ' + Math.round(v).toLocaleString('id-ID');
+        else        display = v.toLocaleString('id-ID');
+      }
+      return `<td class="${cls}">${display}</td>`;
+    }).join('')}</tr>`).join('');
+    tb.style.display='table';
+  } catch{ ld.style.display='none'; em.style.display='block'; }
+}
+
+function renderTagihanTren(histData){
+  if(!histData || !histData.length) return;
+
+  // Sort by bulan chronologically
+  const BN=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
+  const toDate = b => {
+    if(!b) return 0;
+    const p = String(b).split(' ');
+    return (+(p[1]||0))*100 + BN.indexOf(p[0]);
+  };
+  const sorted = [...histData].sort((a,b)=>toDate(a['Bulan'])-toDate(b['Bulan'])).slice(-12);
+
+  const labels   = sorted.map(r=>r['Bulan']||'');
+  const plnArr   = sorted.map(r=>(+r['Tagihan PLN (Rp)']||0)/1e6);
+  const pamArr   = sorted.map(r=>(+r['Tagihan PAM (Rp)']||0)/1e6);
+
+  // Hitung tagihan tenant per bulan dari unitData history (pakai tarif tenant)
+  // For now compute from PLN/PAM data — tenant is estimated from allUnit
+  // We'll use tagihanData which is already populated in doRefresh
+  const tenEArr  = sorted.map(r=>{
+    const m = r['Bulan'];
+    const rows = (window._allUnitHistory||[]).filter(u=>normBulan(u['Bulan'])===m);
+    const kwh  = rows.reduce((s,u)=>s+(+u['Pemakaian Listrik (kWh)']||0),0);
+    return calcTagihanTenantListrik(kwh)/1e6;
+  });
+  const tenWArr  = sorted.map(r=>{
+    const m = r['Bulan'];
+    const rows = (window._allUnitHistory||[]).filter(u=>normBulan(u['Bulan'])===m);
+    const m3   = rows.reduce((s,u)=>s+(+u['Pemakaian Air (m3)']||0),0);
+    return calcTagihanTenantAir(m3)/1e6;
+  });
+
+  const diffEArr = plnArr.map((v,i)=>+(v-tenEArr[i]).toFixed(3));
+  const diffWArr = pamArr.map((v,i)=>+(v-tenWArr[i]).toFixed(3));
+
+  // Colors for diff bars — red=gedung tanggung, green=tenant over
+  const diffEColors = diffEArr.map(v=>v>0?'rgba(239,68,68,.7)':'rgba(16,185,129,.7)');
+  const diffWColors = diffWArr.map(v=>v>0?'rgba(6,182,212,.6)':'rgba(16,185,129,.5)');
+
+  if(charts.tgTrenE){
+    charts.tgTrenE.data.labels=labels;
+    charts.tgTrenE.data.datasets[0].data=plnArr;
+    charts.tgTrenE.data.datasets[1].data=tenEArr;
+    charts.tgTrenE.update();
+  }
+  if(charts.tgTrenW){
+    charts.tgTrenW.data.labels=labels;
+    charts.tgTrenW.data.datasets[0].data=pamArr;
+    charts.tgTrenW.data.datasets[1].data=tenWArr;
+    charts.tgTrenW.update();
+  }
+  if(charts.tgTrenDiff){
+    charts.tgTrenDiff.data.labels=labels;
+    charts.tgTrenDiff.data.datasets[0].data=diffEArr;
+    charts.tgTrenDiff.data.datasets[0].backgroundColor=diffEColors;
+    charts.tgTrenDiff.data.datasets[1].data=diffWArr;
+    charts.tgTrenDiff.data.datasets[1].backgroundColor=diffWColors;
+    charts.tgTrenDiff.update();
+  }
+}
+
+function initTagihanCharts(){
+  // Bar: Listrik comparison
+  const ctE=document.getElementById('cTgElec'); if(ctE)
+  charts.tgElec=new Chart(ctE,{
+    type:'bar',
+    data:{ labels:['🏢 PLN Gedung','🏠 Total Tenant','🏗 Common Area'],
+      datasets:[{data:[0,0,0],backgroundColor:['rgba(245,158,11,.8)','rgba(16,185,129,.7)','rgba(239,68,68,.6)'],borderRadius:6,borderWidth:0}]
+    },
+    options:{ responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>'Rp '+(ctx.raw*1e6).toLocaleString('id-ID')}}},
+      scales:{x:{grid:{display:false}},y:{grid:{color:'#1a2535'},ticks:{callback:v=>v+'Jt'}}}
+    }
+  });
+
+  // Bar: Air comparison
+  const ctW=document.getElementById('cTgWater'); if(ctW)
+  charts.tgWater=new Chart(ctW,{
+    type:'bar',
+    data:{ labels:['🏢 PAM Gedung','🏠 Total Tenant','🏗 Common Area'],
+      datasets:[{data:[0,0,0],backgroundColor:['rgba(6,182,212,.8)','rgba(16,185,129,.7)','rgba(239,68,68,.6)'],borderRadius:6,borderWidth:0}]
+    },
+    options:{ responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>'Rp '+(ctx.raw*1e6).toLocaleString('id-ID')}}},
+      scales:{x:{grid:{display:false}},y:{grid:{color:'#1a2535'},ticks:{callback:v=>v+'Jt'}}}
+    }
+  });
+
+  // Line: Tren Listrik — PLN Gedung vs Tenant
+  const ctTE=document.getElementById('cTgTrenE'); if(ctTE)
+  charts.tgTrenE=new Chart(ctTE,{
+    type:'line',
+    data:{ labels:[], datasets:[
+      {label:'PLN Gedung (Jt Rp)', data:[], borderColor:'#f59e0b', backgroundColor:'rgba(245,158,11,.15)', tension:.4, fill:true, pointRadius:4, pointBackgroundColor:'#f59e0b', borderWidth:2},
+      {label:'Tagihan Tenant (Jt Rp)', data:[], borderColor:'#10b981', backgroundColor:'rgba(16,185,129,.1)', tension:.4, fill:true, pointRadius:4, pointBackgroundColor:'#10b981', borderWidth:2, borderDash:[5,3]},
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{labels:{boxWidth:10,font:{size:10}}},
+        tooltip:{callbacks:{label:ctx=>'  '+ctx.dataset.label+': Rp '+(ctx.raw*1e6).toLocaleString('id-ID')}}},
+      scales:{
+        x:{grid:{color:'#1a2535'}, ticks:{font:{size:9}}},
+        y:{grid:{color:'#1a2535'}, ticks:{callback:v=>v.toFixed(1)+'Jt'}}
+      }
+    }
+  });
+
+  // Line: Tren Air — PAM Gedung vs Tenant
+  const ctTW=document.getElementById('cTgTrenW'); if(ctTW)
+  charts.tgTrenW=new Chart(ctTW,{
+    type:'line',
+    data:{ labels:[], datasets:[
+      {label:'PAM Gedung (Jt Rp)', data:[], borderColor:'#06b6d4', backgroundColor:'rgba(6,182,212,.15)', tension:.4, fill:true, pointRadius:4, pointBackgroundColor:'#06b6d4', borderWidth:2},
+      {label:'Tagihan Tenant (Jt Rp)', data:[], borderColor:'#10b981', backgroundColor:'rgba(16,185,129,.1)', tension:.4, fill:true, pointRadius:4, pointBackgroundColor:'#10b981', borderWidth:2, borderDash:[5,3]},
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{labels:{boxWidth:10,font:{size:10}}},
+        tooltip:{callbacks:{label:ctx=>'  '+ctx.dataset.label+': Rp '+(ctx.raw*1e6).toLocaleString('id-ID')}}},
+      scales:{
+        x:{grid:{color:'#1a2535'}, ticks:{font:{size:9}}},
+        y:{grid:{color:'#1a2535'}, ticks:{callback:v=>v.toFixed(1)+'Jt'}}
+      }
+    }
+  });
+
+  // Bar: Selisih bulanan (gedung - tenant)
+  const ctTD=document.getElementById('cTgTrenDiff'); if(ctTD)
+  charts.tgTrenDiff=new Chart(ctTD,{
+    type:'bar',
+    data:{ labels:[], datasets:[
+      {label:'Selisih Listrik (Jt Rp)', data:[], backgroundColor:[], borderRadius:4, borderWidth:0},
+      {label:'Selisih Air (Jt Rp)', data:[], backgroundColor:[], borderRadius:4, borderWidth:0},
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{labels:{boxWidth:10,font:{size:10}}},
+        tooltip:{callbacks:{label:ctx=>'  '+ctx.dataset.label+': Rp '+(Math.abs(ctx.raw)*1e6).toLocaleString('id-ID')+(ctx.raw>0?' (ditanggung gedung)':' (tenant over)')}}},
+      scales:{
+        x:{grid:{display:false}, ticks:{font:{size:9}}},
+        y:{grid:{color:'#1a2535'}, ticks:{callback:v=>v.toFixed(1)+'Jt'}}
+      }
+    }
+  });
+}
+
+
+
+
+// ═══════════════════════════════════════════════════
+// LVMDP LOG
+// ═══════════════════════════════════════════════════
+const LVMDP_VOLT_MIN = 342, LVMDP_VOLT_MAX = 418; // 380V ±10%
+const LVMDP_FREQ_MIN = 49, LVMDP_FREQ_MAX = 51;
+const LVMDP_THD_WARN = 8, LVMDP_THD_CRIT = 15;
+
+let lvmdpData = []; // cache data dari sheets
+
+// Init LVMDP tab — set default date ke hari ini
+function initLvmdp(){
+  const d = document.getElementById('lvmdpDate');
+  if(d && !d.value){
+    const now = new Date();
+    d.value = now.toISOString().slice(0,10);
+  }
+  updateLvmdpLabel();
+}
+
+function updateLvmdpLabel(){
+  const panel = document.getElementById('lvmdpPanel')?.value||'1';
+  const date  = document.getElementById('lvmdpDate')?.value||'—';
+  const el = document.getElementById('lvmdpInputLabel');
+  if(el) el.textContent = `LVMDP ${panel} — ${date}`;
+}
+
+// Save entry ke Sheets
+async function saveLvmdpEntry(){
+  const status = document.getElementById('lvmdpSaveStatus');
+  status.textContent = '⏳ Menyimpan...';
+  const panel = document.getElementById('lvmdpPanel').value;
+  const date  = document.getElementById('lvmdpDate').value;
+  const jam   = document.getElementById('li_jam').value;
+  const row = [
+    date, jam, panel,
+    document.getElementById('li_vr').value||'',
+    document.getElementById('li_vs').value||'',
+    document.getElementById('li_vt').value||'',
+    document.getElementById('li_ir').value||'',
+    document.getElementById('li_is').value||'',
+    document.getElementById('li_it').value||'',
+    document.getElementById('li_hz').value||'',
+    document.getElementById('li_pf').value||'',
+    document.getElementById('li_kw').value||'',
+    document.getElementById('li_cb').value||'',
+    document.getElementById('li_thdi').value||'',
+    document.getElementById('li_thdv').value||'',
+    document.getElementById('li_note').value||''
+  ];
+  const headers = ['Tanggal','Jam','Panel','VR','VS','VT','IR','IS','IT','Hz','CosP','kW','CapBank','THD_I','THD_V','Catatan'];
+  try {
+    const params = new URLSearchParams({
+      action:'write', sheet:'Log_LVMDP',
+      headers: JSON.stringify(headers),
+      row: JSON.stringify(row)
+    });
+    const res = await fetch(CFG.url+'?'+params.toString());
+    const data = await res.json();
+    if(data.status==='ok'){
+      status.textContent = '✅ Tersimpan!';
+      // Clear form
+      ['li_vr','li_vs','li_vt','li_ir','li_is','li_it','li_hz','li_pf','li_kw','li_cb','li_thdi','li_thdv','li_note']
+        .forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+      // Reload log
+      await loadLvmdpData();
+      renderLvmdpLog();
+    } else {
+      status.textContent = '❌ Gagal: '+(data.error||'unknown');
+    }
+  } catch(e){
+    status.textContent = '❌ Error: '+e.message;
+  }
+  setTimeout(()=>{ status.textContent=''; }, 4000);
+}
+
+// Load data LVMDP dari Sheets
+async function loadLvmdpData(){
+  try {
+    const params = new URLSearchParams({action:'read', sheet:'Log_LVMDP'});
+    const res = await fetch(CFG.url+'?'+params.toString());
+    const data = await res.json();
+    if(data.rows && data.rows.length > 1){
+      const [hdr, ...rows] = data.rows;
+      lvmdpData = rows.map(r => {
+        const o = {};
+        hdr.forEach((h,i) => o[h] = r[i]??'');
+        return o;
+      });
+    }
+  } catch(e){ console.warn('LVMDP load error:', e); }
+}
+
+// Render log table & charts for selected panel+date
+function renderLvmdpLog(){
+  updateLvmdpLabel();
+  const panel = document.getElementById('lvmdpPanel')?.value||'1';
+  const date  = document.getElementById('lvmdpDate')?.value||'';
+
+  const filtered = lvmdpData.filter(r =>
+    String(r['Panel'])===String(panel) &&
+    String(r['Tanggal']).slice(0,10)===date
+  );
+
+  const tbody = document.getElementById('lvmdpBody');
+  const empty = document.getElementById('lvmdpEmpty');
+
+  if(!filtered.length){
+    if(tbody) tbody.innerHTML='';
+    if(empty) empty.style.display='block';
+  } else {
+    empty.style.display='none';
+    tbody.innerHTML = filtered.map(r => {
+      const vr=+r['VR'],vs=+r['VS'],vt=+r['VT'];
+      const voltWarn = [vr,vs,vt].some(v=>v&&(v<LVMDP_VOLT_MIN||v>LVMDP_VOLT_MAX));
+      const thdWarn  = (+r['THD_I']>LVMDP_THD_WARN||+r['THD_V']>LVMDP_THD_WARN);
+      const thdCrit  = (+r['THD_I']>LVMDP_THD_CRIT||+r['THD_V']>LVMDP_THD_CRIT);
+      const rowCls   = thdCrit||voltWarn?'lvmdp-row-crit':thdWarn?'lvmdp-row-warn':'';
+      return `<tr class="${rowCls}">
+        <td style="padding:6px 8px;white-space:nowrap;">${r['Tanggal']}</td>
+        <td style="padding:6px 8px;text-align:center;">${r['Jam']}</td>
+        <td style="padding:6px 8px;text-align:center;color:${voltWarn?'var(--red)':'var(--text)'};">${r['VR']}</td>
+        <td style="padding:6px 8px;text-align:center;color:${voltWarn?'var(--red)':'var(--text)'};">${r['VS']}</td>
+        <td style="padding:6px 8px;text-align:center;color:${voltWarn?'var(--red)':'var(--text)'};">${r['VT']}</td>
+        <td style="padding:6px 8px;text-align:center;">${r['IR']}</td>
+        <td style="padding:6px 8px;text-align:center;">${r['IS']}</td>
+        <td style="padding:6px 8px;text-align:center;">${r['IT']}</td>
+        <td style="padding:6px 8px;text-align:center;">${r['Hz']}</td>
+        <td style="padding:6px 8px;text-align:center;">${r['CosP']}</td>
+        <td style="padding:6px 8px;text-align:center;">${r['kW']}</td>
+        <td style="padding:6px 8px;text-align:center;">${r['CapBank']}</td>
+        <td style="padding:6px 8px;text-align:center;color:${+r['THD_I']>LVMDP_THD_WARN?'var(--yellow)':''};">${r['THD_I']}</td>
+        <td style="padding:6px 8px;text-align:center;color:${+r['THD_V']>LVMDP_THD_WARN?'var(--yellow)':''};">${r['THD_V']}</td>
+        <td style="padding:6px 8px;">${r['Catatan']}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  // Alert panel
+  const alerts = [];
+  filtered.forEach(r=>{
+    const msgs = [];
+    const vr=+r['VR'],vs=+r['VS'],vt=+r['VT'];
+    if(vr&&(vr<LVMDP_VOLT_MIN||vr>LVMDP_VOLT_MAX)) msgs.push(`VR=${vr}V diluar batas`);
+    if(vs&&(vs<LVMDP_VOLT_MIN||vs>LVMDP_VOLT_MAX)) msgs.push(`VS=${vs}V diluar batas`);
+    if(vt&&(vt<LVMDP_VOLT_MIN||vt>LVMDP_VOLT_MAX)) msgs.push(`VT=${vt}V diluar batas`);
+    if(+r['THD_I']>LVMDP_THD_CRIT) msgs.push(`THD I=${r['THD_I']}% KRITIS`);
+    else if(+r['THD_I']>LVMDP_THD_WARN) msgs.push(`THD I=${r['THD_I']}% tinggi`);
+    if(+r['THD_V']>LVMDP_THD_CRIT) msgs.push(`THD V=${r['THD_V']}% KRITIS`);
+    else if(+r['THD_V']>LVMDP_THD_WARN) msgs.push(`THD V=${r['THD_V']}% tinggi`);
+    if(msgs.length) alerts.push(`<b>${r['Jam']}</b>: ${msgs.join(', ')}`);
+  });
+  const alertEl = document.getElementById('lvmdpAlert');
+  if(alertEl){
+    if(alerts.length){
+      alertEl.style.display='block';
+      alertEl.innerHTML=`<div style="background:rgba(255,60,60,.12);border:1px solid #ff3c3c;border-radius:8px;padding:10px 14px;">
+        <div style="font-weight:700;font-size:.8rem;margin-bottom:4px;">🚨 Alert LVMDP ${panel}</div>
+        ${alerts.map(a=>`<div style="font-size:.75rem;color:var(--muted2);margin-left:8px;">• ${a}</div>`).join('')}
+      </div>`;
+    } else {
+      alertEl.style.display='none';
+    }
+  }
+
+  // Charts
+  const jams  = filtered.map(r=>r['Jam']);
+  updLvmdpChart('cLvVolt', jams,
+    [{label:'VR',data:filtered.map(r=>+r['VR']||null),borderColor:'#f87171',tension:.4,pointRadius:4},
+     {label:'VS',data:filtered.map(r=>+r['VS']||null),borderColor:'#4ade80',tension:.4,pointRadius:4},
+     {label:'VT',data:filtered.map(r=>+r['VT']||null),borderColor:'#60a5fa',tension:.4,pointRadius:4}],
+    'volt', LVMDP_VOLT_MIN, LVMDP_VOLT_MAX);
+  updLvmdpChart('cLvAmp', jams,
+    [{label:'IR',data:filtered.map(r=>+r['IR']||null),borderColor:'#f87171',tension:.4,pointRadius:4},
+     {label:'IS',data:filtered.map(r=>+r['IS']||null),borderColor:'#4ade80',tension:.4,pointRadius:4},
+     {label:'IT',data:filtered.map(r=>+r['IT']||null),borderColor:'#60a5fa',tension:.4,pointRadius:4}],'amp');
+  updLvmdpChart('cLvKw', jams,
+    [{label:'kW',data:filtered.map(r=>+r['kW']||null),borderColor:'#f5c542',tension:.4,pointRadius:4},
+     {label:'Cos φ×100',data:filtered.map(r=>r['CosP']?(+r['CosP']*100):null),borderColor:'#a78bfa',tension:.4,pointRadius:4}],'kw');
+  updLvmdpChart('cLvThd', jams,
+    [{label:'THD I%',data:filtered.map(r=>+r['THD_I']||null),borderColor:'#fb923c',tension:.4,pointRadius:4},
+     {label:'THD V%',data:filtered.map(r=>+r['THD_V']||null),borderColor:'#f472b6',tension:.4,pointRadius:4}],'thd');
+}
+
+function updLvmdpChart(id, labels, datasets, type, yMin, yMax){
+  const ctx = document.getElementById(id);
+  if(!ctx) return;
+  const key = 'lv_'+id;
+  const opts = {
+    responsive:true, maintainAspectRatio:false,
+    plugins:{legend:{labels:{boxWidth:9,font:{size:9},color:'#aaa'}}},
+    scales:{
+      x:{ticks:{font:{size:9}},grid:{display:false}},
+      y:{ticks:{font:{size:9}},grid:{color:'rgba(255,255,255,.05)'},
+        ...(yMin!==undefined?{min:yMin-20,max:yMax+20}:{})}
+    }
+  };
+  if(charts[key]){
+    charts[key].data.labels=labels;
+    charts[key].data.datasets=datasets;
+    charts[key].update();
+    return;
+  }
+  charts[key] = new Chart(ctx,{type:'line',data:{labels,datasets},options:opts});
+}
+
+// Export PDF — cetak log bulan ini
+function exportLvmdpPdf(){
+  const panel = document.getElementById('lvmdpPanel').value;
+  const month = document.getElementById('lvmdpDate').value.slice(0,7);
+  const filtered = lvmdpData.filter(r=>
+    String(r['Panel'])===String(panel) &&
+    String(r['Tanggal']).slice(0,7)===month
+  ).sort((a,b)=>String(a['Tanggal']+a['Jam']).localeCompare(String(b['Tanggal']+b['Jam'])));
+
+  const rows = filtered.map(r=>`
+    <tr>
+      <td>${r['Tanggal']}</td><td>${r['Jam']}</td>
+      <td>${r['VR']}</td><td>${r['VS']}</td><td>${r['VT']}</td>
+      <td>${r['IR']}</td><td>${r['IS']}</td><td>${r['IT']}</td>
+      <td>${r['Hz']}</td><td>${r['CosP']}</td><td>${r['kW']}</td>
+      <td>${r['CapBank']}</td><td>${r['THD_I']}</td><td>${r['THD_V']}</td>
+      <td>${r['Catatan']}</td>
+    </tr>`).join('');
+
+  const html = `<html><head><title>Log LVMDP ${panel}</title>
+  <style>body{font-family:Arial;font-size:10px;margin:15px;}
+  h2{font-size:13px;margin-bottom:4px;}
+  table{width:100%;border-collapse:collapse;}
+  th,td{border:1px solid #ccc;padding:4px 6px;text-align:center;}
+  th{background:#f0f0f0;}</style></head><body>
+  <h2>CHECK LIST PEMELIHARAAN LVMDP ${panel} — Menteng Regency Apartment</h2>
+  <p style="font-size:9px;">Bulan: ${month} | Dicetak: ${new Date().toLocaleString('id-ID')}</p>
+  <table><thead><tr>
+    <th>Tanggal</th><th>Jam</th>
+    <th>VR</th><th>VS</th><th>VT</th>
+    <th>IR</th><th>IS</th><th>IT</th>
+    <th>Hz</th><th>Cos φ</th><th>kW</th><th>Cap.B</th>
+    <th>THD I%</th><th>THD V%</th><th>Catatan</th>
+  </tr></thead><tbody>${rows}</tbody></table>
+  </body></html>`;
+
+  const w = window.open('','_blank');
+  w.document.write(html);
+  w.document.close();
+  w.print();
+}
+
+// Hook into sw() to load data when LVMDP tab opened
+const _swOrig = window.sw;
+window.sw = function(tab, el, grp){
+  _swOrig(tab, el, grp);
+  if(tab==='lvmdp'){
+    initLvmdp();
+    loadLvmdpData().then(()=>renderLvmdpLog());
+  }
+};
+</script>
+
+<!-- ── FOTO METER MODAL ── -->
+<div id="fotoModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;align-items:center;justify-content:center;padding:16px;">
+  <div style="background:var(--card);border:1px solid var(--border2);border-radius:14px;width:100%;max-width:480px;padding:20px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:.08em;" id="fotoTitle">📷 FOTO METER</div>
+        <div style="font-size:.72rem;color:var(--muted2);" id="fotoSubtitle">Arahkan kamera ke display angka meteran</div>
+      </div>
+      <button onclick="closeFoto()" style="background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer;">✕</button>
+    </div>
+
+    <!-- Camera / Preview area -->
+    <div style="position:relative;background:#000;border-radius:10px;overflow:hidden;margin-bottom:12px;aspect-ratio:4/3;">
+      <video id="fotoVideo" autoplay playsinline style="width:100%;height:100%;object-fit:cover;display:block;"></video>
+      <canvas id="fotoCanvas" style="display:none;width:100%;height:100%;object-fit:cover;"></canvas>
+      <img id="fotoPreview" style="display:none;width:100%;height:100%;object-fit:cover;" alt="preview">
+      <!-- Overlay guide -->
+      <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;">
+        <div style="border:2px solid rgba(255,184,0,.7);border-radius:8px;width:75%;height:35%;box-shadow:0 0 0 9999px rgba(0,0,0,.4);"></div>
+      </div>
+      <div style="position:absolute;bottom:8px;left:0;right:0;text-align:center;font-size:.65rem;color:rgba(255,255,255,.6);">Posisikan angka di dalam kotak</div>
+    </div>
+
+    <!-- Result -->
+    <div id="fotoResult" style="display:none;background:rgba(0,229,160,.08);border:1px solid rgba(0,229,160,.3);border-radius:8px;padding:12px;margin-bottom:12px;text-align:center;">
+      <div style="font-size:.72rem;color:var(--muted2);margin-bottom:6px;">Angka terbaca — edit jika perlu:</div>
+      <input id="fotoAngkaInput" type="number" step="0.1" style="font-family:'Bebas Neue',sans-serif;font-size:1.6rem;color:var(--green);background:transparent;border:none;border-bottom:2px solid var(--green);text-align:center;width:100%;letter-spacing:.08em;outline:none;" placeholder="—">
+      <div id="fotoSatuan" style="font-size:.7rem;color:var(--muted2);margin-top:4px;"></div>
+    </div>
+
+    <div id="fotoError" style="display:none;background:rgba(255,69,96,.08);border:1px solid rgba(255,69,96,.3);border-radius:8px;padding:10px;margin-bottom:12px;font-size:.75rem;color:var(--red);text-align:center;"></div>
+
+    <!-- Buttons -->
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button id="fotoFlashBtn" class="btn" style="display:none;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;padding:8px 12px;" data-on="0">🔦 Flash</button>
+      <button id="fotoCaptureBtn" class="btn by" style="flex:1;" onclick="capturePhoto()">📸 AMBIL FOTO</button>
+      <label class="btn" style="flex:1;background:rgba(192,132,252,.15);border:1px solid var(--purple);color:var(--purple);cursor:pointer;text-align:center;">
+        🖼 PILIH DARI GALERI
+        <input type="file" id="galeriInput" accept="image/*" style="display:none;" onchange="handleGaleriPhoto(this)">
+      </label>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:8px;">
+      <button id="fotoRetakeBtn" class="btn bo" style="flex:1;display:none;" onclick="retakePhoto()">🔄 ULANGI</button>
+      <button id="fotoUseBtn" class="btn" style="flex:1;display:none;background:rgba(0,229,160,.15);border:1px solid var(--green);color:var(--green);" onclick="useResult()">✅ GUNAKAN ANGKA INI</button>
+    </div>
+
+    <div id="fotoLoading" style="display:none;text-align:center;padding:10px;font-size:.78rem;color:var(--muted2);">
+      <span class="spin" style="vertical-align:middle;margin-right:6px;"></span>Membaca angka meteran...
+    </div>
+    <div style="font-size:.65rem;color:var(--muted2);text-align:center;margin-top:6px;opacity:.7;">🆓 OCR.space — gratis 25.000 foto/bulan</div>
+  </div>
+</div>
+
+</body>
+</html>
