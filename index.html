@@ -1148,11 +1148,21 @@ window.handleGaleriPhoto = function(input){
   const reader = new FileReader();
   reader.onload = e=>{
     fotoB64 = e.target.result.split(',')[1];
+    // Draw ke fotoCanvas agar analyzePhoto bisa crop
+    const img2 = new Image();
+    img2.onload = function(){
+      const canvas = document.getElementById('fotoCanvas');
+      canvas.width = img2.naturalWidth;
+      canvas.height = img2.naturalHeight;
+      canvas.getContext('2d').drawImage(img2, 0, 0);
+      fotoB64 = null; // reset agar pakai canvas path
+    };
+    img2.src = e.target.result;
     document.getElementById('fotoPreview').src = e.target.result;
     document.getElementById('fotoPreview').style.display='block';
     document.getElementById('fotoVideo').style.display='none';
     document.getElementById('fotoCaptureBtn').style.display='none';
-    analyzePhoto();
+    setTimeout(analyzePhoto, 300); // tunggu img load
   };
   reader.readAsDataURL(file);
 };
@@ -1170,6 +1180,7 @@ async function analyzePhoto(){
   try{
     // Jika foto dari galeri (fotoB64 sudah ada), pakai langsung
     let b64;
+    console.log('[OCR] fotoB64 length at analyzePhoto:', fotoB64 ? fotoB64.length : 'null');
     if(fotoB64){
       // Gambar dari galeri — crop via Image element
       const img = new Image();
