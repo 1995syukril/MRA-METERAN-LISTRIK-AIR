@@ -1384,7 +1384,7 @@ window.importData = async function(){
 // ═══════════════════════════════════════════════════
 const SK = 'menteng_v3';
 let CFG = {
-  apiKey:'', url:'https://script.google.com/macros/s/AKfycbxrvA-BzhNnnra2uP390bXylcALlHO6bFsi39y15hmpnxCFQh0Z_DNaIOQekj4sw8r9tg/exec', tgtE:250, tgtW:60, anomE:150, anomW:150,
+  apiKey:'', url:'https://script.google.com/macros/s/AKfycbwjyhMCJrDsUfgpGqHV8_XUlay7EHALhIJDIkyehJ-JhyAzMCgXJJO5ayb80KFRS_qA5A/exec', tgtE:250, tgtW:60, anomE:150, anomW:150,
   // Tarif PLN gedung (LWBP + WBP) — untuk hitung tagihan total gedung
   tarifLWBP: 1035.78,
   tarifWBP:  1553.67,
@@ -1472,7 +1472,7 @@ function loadCFG(){
 
   // Fallback: hardcoded default URL jika localStorage kosong
   if(!CFG.url){
-    CFG.url = 'https://script.google.com/macros/s/AKfycbxrvA-BzhNnnra2uP390bXylcALlHO6bFsi39y15hmpnxCFQh0Z_DNaIOQekj4sw8r9tg/exec';
+    CFG.url = 'https://script.google.com/macros/s/AKfycbwjyhMCJrDsUfgpGqHV8_XUlay7EHALhIJDIkyehJ-JhyAzMCgXJJO5ayb80KFRS_qA5A/exec';
   }
   // Atau dari query string ?url=...
   const qUrl = new URLSearchParams(window.location.search).get('url');
