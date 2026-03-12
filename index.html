@@ -1174,25 +1174,24 @@ async function analyzePhoto(){
     const cx = Math.round(cw*0.125), cy = Math.round(ch*0.325);
     const cW = Math.round(cw*0.75),  cH = Math.round(ch*0.35);
 
-    // Resize ke 300x100 — cukup untuk OCR angka, cukup kecil untuk URL
+    // POST tidak ada limit URL — kirim gambar lebih besar
     const tiny = document.createElement('canvas');
-    tiny.width = 300; tiny.height = 100;
+    tiny.width = 800; tiny.height = 260;
     const tCtx = tiny.getContext('2d');
-    tCtx.filter = 'grayscale(1) contrast(2) brightness(1.2)';
-    tCtx.drawImage(srcCanvas, cx, cy, cW, cH, 0, 0, 300, 100);
-    const b64 = tiny.toDataURL('image/png', 1.0).split(',')[1];
+    tCtx.filter = 'grayscale(1) contrast(2) brightness(1.1)';
+    tCtx.drawImage(srcCanvas, cx, cy, cW, cH, 0, 0, 800, 260);
+    const b64 = tiny.toDataURL('image/jpeg', 0.92).split(',')[1];
     console.log('[OCR] b64 length:', b64.length);
 
-    // JSONP ke Apps Script
-    const data = await new Promise((resolve, reject) => {
-      const cbName = 'ocrCb_' + Date.now();
-      const script = document.createElement('script');
-      const timer = setTimeout(()=>{ delete window[cbName]; script.remove(); reject(new Error('Timeout 30s')); }, 30000);
-      window[cbName] = d => { clearTimeout(timer); delete window[cbName]; script.remove(); resolve(d); };
-      script.onerror = ()=>{ clearTimeout(timer); delete window[cbName]; reject(new Error('Script error')); };
-      script.src = CFG.url + '?action=ocr&callback=' + cbName + '&img=' + encodeURIComponent(b64);
-      document.head.appendChild(script);
+    // Kirim via fetch POST form-urlencoded — Apps Script baca dari e.parameter
+    const body = 'action=ocr&img=' + encodeURIComponent(b64);
+    const res = await fetch(CFG.url, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body: body,
+      redirect: 'follow'
     });
+    const data = await res.json();
 
     console.log('[OCR result]', data);
     const text = data.text || '';
