@@ -1796,15 +1796,15 @@ async function testConn(){
 }
 async function post2(sheet, headers, row){
   if(!CFG.url) throw new Error('URL Apps Script kosong.');
-  const headersEnc = encodeURIComponent(JSON.stringify(headers));
-  const rowEnc     = encodeURIComponent(JSON.stringify(row));
-  const sheetEnc   = encodeURIComponent(sheet);
-  const url = `${CFG.url}?action=write&sheet=${sheetEnc}&headers=${headersEnc}&row=${rowEnc}&t=${Date.now()}`;
-  const r = await fetch(url);
-  const text = await r.text();
-  let d;
-  try { d = JSON.parse(text); }
-  catch(e) { throw new Error('Respons tidak valid dari server: ' + text.slice(0,100)); }
+  const params = new URLSearchParams({
+    action:  'write',
+    sheet:   sheet,
+    headers: encodeURIComponent(JSON.stringify(headers)),
+    row:     encodeURIComponent(JSON.stringify(row)),
+    t:       Date.now()
+  });
+  const r = await fetch(CFG.url + '?' + params.toString());
+  const d = await r.json();
   if(d.status === 'error') throw new Error(d.error);
 }
 
@@ -1882,18 +1882,20 @@ function calcInvoiceTenantListrik(kwh, unitOrLantai){
 }
 
 // ── Hitung tagihan air TENANT ──
-// Formula: Total = (m³ × tarif) + Biaya Beban + Biaya Adm
+// Formula: Total = (m³ × tarif) + (Biaya Beban × n unit) + (Biaya Adm × n unit)
 // Invoice  = Total × (1 + PPN)
-function calcTagihanTenantAir(m3){
+// jumlahUnit: jumlah unit yang dihitung (default 1 untuk kalkulasi per-unit)
+function calcTagihanTenantAir(m3, jumlahUnit){
   if(!m3 || m3 <= 0) return 0;
+  const n = jumlahUnit || 1;
   const pemakaian  = m3 * (CFG.tarifTenantW  || 21500);
-  const biayaBeban = CFG.pamBiayaBeban || 47510;
-  const biayaAdm   = CFG.pamBiayaAdm   || 15000;
+  const biayaBeban = (CFG.pamBiayaBeban || 47510) * n;
+  const biayaAdm   = (CFG.pamBiayaAdm   || 15000) * n;
   return Math.round(pemakaian + biayaBeban + biayaAdm);
 }
-function calcInvoiceTenantAir(m3){
+function calcInvoiceTenantAir(m3, jumlahUnit){
   if(!m3 || m3 <= 0) return 0;
-  return Math.round(calcTagihanTenantAir(m3) * (1 + (CFG.ppnPct || 0.11)));
+  return Math.round(calcTagihanTenantAir(m3, jumlahUnit) * (1 + (CFG.ppnPct || 0.11)));
 }
 
 // ── Hitung tagihan listrik bertingkat (LWBP + WBP) ──
@@ -2002,9 +2004,11 @@ async function doRefresh(){
     m12.forEach(m=>{
       const d = allUnit.filter(r=>r['Bulan']===m);
       const tg = tagihanData[m] || {};
+      const aktif = d.filter(r=>r['Tipe']!=='Kosong');
       trenData[m]={
         e:    d.reduce((s,r)=>s+(+r['Pemakaian Listrik (kWh)']||0),0), // meter tenant
         w:    d.reduce((s,r)=>s+(+r['Pemakaian Air (m3)']||0),0),       // meter tenant
+        n:    aktif.length || 1,  // jumlah unit aktif bulan tsb
         plnKwh: tg.plnKwh || 0,   // kWh dari rekening PLN gedung
         pamM3:  tg.pamM3  || 0    // m³ dari rekening PAM gedung
       };
@@ -2078,7 +2082,7 @@ const totEKpi = (window._unitDataCurrent||[]).reduce((s,r)=>{
   return s+calcTagihanTenantListrik(+r['Pemakaian Listrik (kWh)']||0, r['Lantai']||r['Unit']||'');
 },0);
 setText('k-ecost',(totEKpi/1e6).toFixed(1));
-  setText('k-wcost',(calcTagihanTenantAir(totW)/1e6).toFixed(1));
+  setText('k-wcost',(calcTagihanTenantAir(totW, ten.length)/1e6).toFixed(1));
   setText('k-eu','Juta Rp (tarif tenant Rp '+CFG.tarifTenantE.toLocaleString('id-ID')+'/kWh)');
   setText('k-wu','Juta Rp (tarif tenant Rp '+CFG.tarifTenantW.toLocaleString('id-ID')+'/m³)');
   setText('k-units',ten.length+' unit');
@@ -2333,8 +2337,9 @@ function renderTren(m12){
   const cD=m12.map(m=>{
     const e=(trenData[m]||{e:0}).e;
     const w=(trenData[m]||{w:0}).w;
+    const n=(trenData[m]||{n:1}).n;
     if(!e && !w) return 0;
-    return +((calcTagihanTenantListrik(e)+calcTagihanTenantAir(w))/1e6).toFixed(2);
+    return +((calcTagihanTenantListrik(e)+calcTagihanTenantAir(w,n))/1e6).toFixed(2);
   });
   const lbl=m12.map(m=>m.split(' ')[0]+'\''+m.split(' ')[1].slice(2));
 
@@ -2787,8 +2792,8 @@ function renderTagihan(month){
     const lantai = r['Lantai'] || r['Unit'] || '';
     return sum + calcTagihanTenantListrik(kwh, lantai);
   }, 0);
-  // tagihan ke tenant pakai tarif tenant + minimum lantai
-  const tenWRp  = calcTagihanTenantAir(tenWm3); // tagihan ke tenant pakai tarif tenant
+  // tagihan ke tenant: hitung per unit agar biaya beban & adm dikalikan jumlah unit (sesuai SAP)
+  const tenWRp = ten.reduce((s,r) => s + calcTagihanTenantAir(+r['Pemakaian Air (m3)']||0, 1), 0);
 
   // Common area = Gedung − Tenant
   const caERp = Math.max(plnRp - tenERp, 0);
@@ -2940,7 +2945,8 @@ function renderTagihanTren(histData){
     const m = r['Bulan'];
     const rows = (window._allUnitHistory||[]).filter(u=>normBulan(u['Bulan'])===m);
     const m3   = rows.reduce((s,u)=>s+(+u['Pemakaian Air (m3)']||0),0);
-    return calcTagihanTenantAir(m3)/1e6;
+    const n    = rows.filter(u=>u['Tipe']!=='Kosong').length || 1;
+    return calcTagihanTenantAir(m3, n)/1e6;
   });
 
   const diffEArr = plnArr.map((v,i)=>+(v-tenEArr[i]).toFixed(3));
