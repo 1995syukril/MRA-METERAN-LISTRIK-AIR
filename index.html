@@ -762,12 +762,12 @@ function doPost(e) {
     </div>
     <div class="sc" style="border-color:var(--green);">
       <label>⭐ Minimum kWh Lantai 2–3</label>
-      <input type="number" id="s-min-lt23" value="350" onchange="saveSettings()">
+      <input type="number" id="s-min-lt23" value="352" onchange="saveSettings()">
       <div class="hint">Minimum pemakaian tagihan Lantai 2 & 3. Jika pemakaian lebih rendah, tetap ditagih minimum ini.</div>
     </div>
     <div class="sc" style="border-color:var(--green);">
       <label>⭐ Minimum kWh Lantai 4–7</label>
-      <input type="number" id="s-min-lt47" value="550" onchange="saveSettings()">
+      <input type="number" id="s-min-lt47" value="554" onchange="saveSettings()">
       <div class="hint">Minimum pemakaian tagihan Lantai 4–7.</div>
     </div>
     <div class="sc" style="border-color:var(--green);">
@@ -1581,8 +1581,8 @@ let CFG = {
   pjuPct:   0.03,  // PJU (Pajak Penerangan Jalan) 3% dari tagihan
   adminPct: 0.10,  // Biaya Admin 10% dari tagihan
   ppnPct:   0.11,  // PPN 11% dari total (untuk Total Invoice)
-  minKwhLt23: 350, // Minimum pemakaian kWh Lantai 2-3
-  minKwhLt47: 550, // Minimum pemakaian kWh Lantai 4-7
+  minKwhLt23: 352, // Minimum pemakaian kWh Lantai 2-3 (Daya 8.8 kVA × 40 jam rekening)
+  minKwhLt47: 554, // Minimum pemakaian kWh Lantai 4-7 (Daya 13.86 kVA × 40 jam rekening)
   // Tarif PAM gedung bertingkat — untuk hitung tagihan total gedung
   pamTier1Limit: 10,   pamTier1Rate: 12550,
   pamTier2Limit: 20,   pamTier2Rate: 17500,
@@ -1668,8 +1668,8 @@ function loadCFG(){
   setVal('s-kvarh',CFG.tarifKVArh); setVal('s-rasio-wbp',Math.round(CFG.rasioWBP*100));
   setVal('s-tenant-e', CFG.tarifTenantE);
   setVal('s-pju',      Math.round((CFG.pjuPct||0.03)*100));
-  setVal('s-min-lt23', CFG.minKwhLt23||350);
-  setVal('s-min-lt47', CFG.minKwhLt47||550);
+  setVal('s-min-lt23', CFG.minKwhLt23||352);
+  setVal('s-min-lt47', CFG.minKwhLt47||554);
   setVal('s-admin', Math.round((CFG.adminPct||0.10)*100));
   setVal('s-ppn',   Math.round((CFG.ppnPct  ||0.11)*100));
   // PAM gedung
@@ -1693,8 +1693,8 @@ function saveSettings(){
   CFG.rasioWBP   = (+gv('s-rasio-wbp')||19) / 100;
   CFG.tarifTenantE = +gv('s-tenant-e')||1699.53;
   CFG.pjuPct      = (+gv('s-pju')      || 3)   / 100;
-  CFG.minKwhLt23  =  +gv('s-min-lt23') || 350;
-  CFG.minKwhLt47  =  +gv('s-min-lt47') || 550;
+  CFG.minKwhLt23  =  +gv('s-min-lt23') || 352;
+  CFG.minKwhLt47  =  +gv('s-min-lt47') || 554;
   CFG.adminPct = (+gv('s-admin')|| 10) / 100;
   CFG.ppnPct   = (+gv('s-ppn')  || 11) / 100;
   // PAM gedung
@@ -1859,8 +1859,8 @@ function getMinKwh(unitOrLantai){
   // Format angka langsung "3", "5"
   else if(/^\d$/.test(str)) lantaiNum = parseInt(str);
 
-  if(lantaiNum >= 2 && lantaiNum <= 3) return CFG.minKwhLt23 || 350;
-  if(lantaiNum >= 4 && lantaiNum <= 7) return CFG.minKwhLt47 || 550;
+  if(lantaiNum >= 2 && lantaiNum <= 3) return CFG.minKwhLt23 || 352;
+  if(lantaiNum >= 4 && lantaiNum <= 7) return CFG.minKwhLt47 || 554;
   return 0; // lantai tidak dikenali / tidak ada minimum
 }
 
@@ -2077,12 +2077,12 @@ function updateDash(){
   // ── KPI ──
   setText('k-elec',totE.toLocaleString('id-ID'));
   setText('k-water',totW.toLocaleString('id-ID'));
-  // KPI listrik: sum per unit dengan minimum lantai
+  // KPI listrik: sum per unit + PPN (Invoice) agar match SAP
 const totEKpi = (window._unitDataCurrent||[]).reduce((s,r)=>{
-  return s+calcTagihanTenantListrik(+r['Pemakaian Listrik (kWh)']||0, r['Lantai']||r['Unit']||'');
+  return s+calcInvoiceTenantListrik(+r['Pemakaian Listrik (kWh)']||0, r['Lantai']||r['Unit']||'');
 },0);
 setText('k-ecost',(totEKpi/1e6).toFixed(1));
-  setText('k-wcost',(calcTagihanTenantAir(totW, ten.length)/1e6).toFixed(1));
+  setText('k-wcost',(calcInvoiceTenantAir(totW, ten.length)/1e6).toFixed(1));
   setText('k-eu','Juta Rp (tarif tenant Rp '+CFG.tarifTenantE.toLocaleString('id-ID')+'/kWh)');
   setText('k-wu','Juta Rp (tarif tenant Rp '+CFG.tarifTenantW.toLocaleString('id-ID')+'/m³)');
   setText('k-units',ten.length+' unit');
@@ -2339,7 +2339,7 @@ function renderTren(m12){
     const w=(trenData[m]||{w:0}).w;
     const n=(trenData[m]||{n:1}).n;
     if(!e && !w) return 0;
-    return +((calcTagihanTenantListrik(e)+calcTagihanTenantAir(w,n))/1e6).toFixed(2);
+    return +((calcInvoiceTenantListrik(e)+calcInvoiceTenantAir(w,n))/1e6).toFixed(2);
   });
   const lbl=m12.map(m=>m.split(' ')[0]+'\''+m.split(' ')[1].slice(2));
 
@@ -2786,14 +2786,14 @@ function renderTagihan(month){
   const ten = unitData.filter(r=>r['Tipe']!=='Kosong');
   const tenEkwh = ten.reduce((s,r)=>s+(+r['Pemakaian Listrik (kWh)']||0),0);
   const tenWm3  = ten.reduce((s,r)=>s+(+r['Pemakaian Air (m3)']||0),0);
-  // Hitung per unit dengan minimum kWh berdasarkan lantai
+  // Hitung per unit + PPN (Invoice) agar match SAP Total Invoice
   const tenERp = unitData.reduce((sum, r) => {
     const kwh    = +r['Pemakaian Listrik (kWh)'] || 0;
     const lantai = r['Lantai'] || r['Unit'] || '';
-    return sum + calcTagihanTenantListrik(kwh, lantai);
+    return sum + calcInvoiceTenantListrik(kwh, lantai);
   }, 0);
-  // tagihan ke tenant: hitung per unit agar biaya beban & adm dikalikan jumlah unit (sesuai SAP)
-  const tenWRp = ten.reduce((s,r) => s + calcTagihanTenantAir(+r['Pemakaian Air (m3)']||0, 1), 0);
+  // tagihan air per unit (biaya beban & adm per unit) + PPN — match SAP Total Invoice
+  const tenWRp = ten.reduce((s,r) => s + calcInvoiceTenantAir(+r['Pemakaian Air (m3)']||0, 1), 0);
 
   // Common area = Gedung − Tenant
   const caERp = Math.max(plnRp - tenERp, 0);
@@ -2939,14 +2939,14 @@ function renderTagihanTren(histData){
     const m = r['Bulan'];
     const rows = (window._allUnitHistory||[]).filter(u=>normBulan(u['Bulan'])===m);
     const kwh  = rows.reduce((s,u)=>s+(+u['Pemakaian Listrik (kWh)']||0),0);
-    return calcTagihanTenantListrik(kwh)/1e6;
+    return calcInvoiceTenantListrik(kwh)/1e6;
   });
   const tenWArr  = sorted.map(r=>{
     const m = r['Bulan'];
     const rows = (window._allUnitHistory||[]).filter(u=>normBulan(u['Bulan'])===m);
     const m3   = rows.reduce((s,u)=>s+(+u['Pemakaian Air (m3)']||0),0);
     const n    = rows.filter(u=>u['Tipe']!=='Kosong').length || 1;
-    return calcTagihanTenantAir(m3, n)/1e6;
+    return calcInvoiceTenantAir(m3, n)/1e6;
   });
 
   const diffEArr = plnArr.map((v,i)=>+(v-tenEArr[i]).toFixed(3));
