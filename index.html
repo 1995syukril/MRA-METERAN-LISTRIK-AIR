@@ -1799,8 +1799,8 @@ async function post2(sheet, headers, row){
   const params = new URLSearchParams({
   action:  'write',
   sheet:   sheet,
-  headers: JSON.stringify(headers),  // ✅ URLSearchParams sudah handle encoding
-  row:     JSON.stringify(row),       // ✅ cukup JSON.stringify saja
+  headers: encodeURIComponent(JSON.stringify(headers)),  // ❌ double encode
+  row:     encodeURIComponent(JSON.stringify(row)),       // ❌ double encode
   t:       Date.now()
 });
 URLSearchParams sudah otomatis encode semua value dengan benar, jadi tidak perlu encodeURIComponent manual lagi.
