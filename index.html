@@ -1797,18 +1797,12 @@ async function testConn(){
 async function post2(sheet, headers, row){
   if(!CFG.url) throw new Error('URL Apps Script kosong.');
   const params = new URLSearchParams({
-  action:  'write',
-  sheet:   sheet,
-  headers: encodeURIComponent(JSON.stringify(headers)),  // ❌ double encode
-  row:     encodeURIComponent(JSON.stringify(row)),       // ❌ double encode
-  t:       Date.now()
-});
-URLSearchParams sudah otomatis encode semua value dengan benar, jadi tidak perlu encodeURIComponent manual lagi.
-
-Mau saya langsung perbaiki filenya dan berikan versi yang sudah difix?
-
-
-Want 
+    action:  'write',
+    sheet:   sheet,
+    headers: encodeURIComponent(JSON.stringify(headers)),
+    row:     encodeURIComponent(JSON.stringify(row)),
+    t:       Date.now()
+  });
   const r = await fetch(CFG.url + '?' + params.toString());
   const d = await r.json();
   if(d.status === 'error') throw new Error(d.error);
