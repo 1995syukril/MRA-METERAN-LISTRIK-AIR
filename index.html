@@ -1796,15 +1796,17 @@ async function testConn(){
 }
 async function post2(sheet, headers, row){
   if(!CFG.url) throw new Error('URL Apps Script kosong.');
-  const headersEnc = encodeURIComponent(JSON.stringify(headers));
-  const rowEnc     = encodeURIComponent(JSON.stringify(row));
-  const sheetEnc   = encodeURIComponent(sheet);
-  const url = `${CFG.url}?action=write&sheet=${sheetEnc}&headers=${headersEnc}&row=${rowEnc}&t=${Date.now()}`;
+  const url = CFG.url
+    + '?action=write'
+    + '&sheet='   + encodeURIComponent(sheet)
+    + '&headers=' + encodeURIComponent(JSON.stringify(headers))
+    + '&row='     + encodeURIComponent(JSON.stringify(row))
+    + '&t='       + Date.now();
   const r = await fetch(url);
   const text = await r.text();
   let d;
   try { d = JSON.parse(text); }
-  catch(e) { throw new Error('Respons tidak valid dari server: ' + text.slice(0,100)); }
+  catch(e) { throw new Error('Respons tidak valid: ' + text.slice(0,120)); }
   if(d.status === 'error') throw new Error(d.error);
 }
 
@@ -3112,12 +3114,12 @@ async function saveLvmdpEntry(){
   ];
   const headers = ['Tanggal','Jam','Panel','VR','VS','VT','IR','IS','IT','Hz','CosP','kW','CapBank','THD_IR','THD_IS','THD_IT','THD_VR','THD_VS','THD_VT','Catatan'];
   try {
-    const params = new URLSearchParams({
-      action:'write', sheet:'Log_LVMDP',
-      headers: JSON.stringify(headers),
-      row: JSON.stringify(row)
-    });
-    const res = await fetch(CFG.url+'?'+params.toString());
+    const url = CFG.url
+      + '?action=write'
+      + '&sheet=Log_LVMDP'
+      + '&headers=' + encodeURIComponent(JSON.stringify(headers))
+      + '&row='     + encodeURIComponent(JSON.stringify(row));
+    const res = await fetch(url);
     const data = await res.json();
     if(data.status==='ok'){
       status.textContent = '✅ Tersimpan!';
@@ -3139,8 +3141,7 @@ async function saveLvmdpEntry(){
 // Load data LVMDP dari Sheets
 async function loadLvmdpData(){
   try {
-    const params = new URLSearchParams({action:'read', sheet:'Log_LVMDP'});
-    const res = await fetch(CFG.url+'?'+params.toString());
+    const res = await fetch(CFG.url + '?action=read&sheet=Log_LVMDP&t=' + Date.now());
     const data = await res.json();
     if(data.rows && data.rows.length > 1){
       const [hdr, ...rows] = data.rows;
